@@ -31,10 +31,10 @@ FIXTURE_DIRS = [
 # ********** MAIL SERVER CONFIG **********
 
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'smtp.gmail.com'
-EMAIL_HOST_USER = 'albertosanmartinmartinez@gmail.com'
+EMAIL_HOST = 'mail.preconcebido.com'
+EMAIL_HOST_USER = ' info@preconcebido.com'
 #EMAIL_HOST_PASSWORD = os.environ['MAIL_PASSWORD']
-EMAIL_HOST_PASSWORD = 'motoscoot.es7620'
+EMAIL_HOST_PASSWORD = 'Motoscoot.es7620'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 #EMAIL_PORT = 465
