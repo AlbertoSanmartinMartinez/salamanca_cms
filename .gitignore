@@ -1,0 +1,9 @@
+
+# Compiled python modules.
+*.pyc
+
+# Setuptools distribution folder.
+/media
+
+# Invisible diles.
+*.DS_Store

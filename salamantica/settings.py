@@ -33,12 +33,10 @@ FIXTURE_DIRS = [
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'mail.salamancamovil.com'
 EMAIL_HOST_USER = 'contacto@salamancamovil.com'
-EMAIL_HOST_PASSWORD = os.environ['MAIL_PASSWORD']
-#EMAIL_HOST_PASSWORD = 'Motoscoot.es7620'
+#EMAIL_HOST_PASSWORD = os.environ['MAIL_PASSWORD']
+EMAIL_HOST_PASSWORD = 'ConTacto21'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
-#EMAIL_PORT = 465
-#EMAIL_USE_SSL = True
 
 # ********** SESSION CONFIG **********
 

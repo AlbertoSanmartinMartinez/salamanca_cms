@@ -265,7 +265,7 @@ def category_list(request, elements=None):
             list.append(getattr(element, field.name))
         element.fields_values = list
 
-    paginator = Paginator(elements, 5)
+    paginator = Paginator(elements, 20)
 
     page = request.GET.get('page')
     if page is None:
@@ -600,8 +600,16 @@ def category_upload(request):
 
             try:
                 parent_category = cms_models.Categoria.objects.get(titulo=list[3])
+                print(parent_category)
+
             except cms_models.Categoria.DoesNotExist:
                 parent_category = None
+                print("not exist")
+
+            except cms_models.Categoria.MultipleObjectsReturned:
+                tmp = cms_models.Categoria.objects.filter(titulo=list[3].strip())
+                parent_category = tmp[0]
+                print("more than one")
 
             try:
                 subcategory = cms_models.Categoria.objects.get_or_create(
@@ -984,12 +992,19 @@ def place_upload(request):
 
             try:
                 category = cms_models.Categoria.objects.get(
-                    titulo=aux[1],
-                    categoria_padre__titulo=aux[0]
+                    titulo=aux[1]
+                    #Q(categoria_padre__titulo=aux[0])
                 )
+                print(category)
 
             except cms_models.Categoria.DoesNotExist:
                 category = None
+                print("not exit")
+
+            except cms_models.Categoria.MultipleObjectsReturned:
+                tmp = cms_models.Categoria.objects.filter(titulo=aux[1].strip())
+                category = tmp[0]
+                print("more than one")
 
             try:
                 cms_models.Lugar.objects.get_or_create(
@@ -1065,7 +1080,7 @@ def promo_list(request, elements=None):
             list.append(getattr(element, field.name))
         element.fields_values = list
 
-    paginator = Paginator(elements, 10)
+    paginator = Paginator(elements, 20)
     page = request.GET.get('page')
 
     if page is None:
@@ -1406,7 +1421,7 @@ def price_list(request, elements=None):
             list.append(getattr(element, field.name))
         element.fields_values = list
 
-    paginator = Paginator(elements, 10)
+    paginator = Paginator(elements, 20)
     page = request.GET.get('page')
 
     if page is None:
@@ -1675,13 +1690,19 @@ def price_upload(request):
             [aux.append(item.strip("'")) for item in list]
             #print(aux)
             #print(len(aux))
+
             try:
                 place = cms_models.Lugar.objects.get(titulo=aux[1].strip())
                 print(place)
+
             except cms_models.Lugar.DoesNotExist:
                 place = None
+                print("not exist")
+
             except cms_models.Lugar.MultipleObjectsReturned:
-                place = None
+                tmp = cms_models.Lugar.objects.filter(titulo=aux[1].strip())
+                place = tmp[0]
+                print("more than one")
 
             try:
                 promo = cms_models.Precio.objects.get_or_create(
@@ -1749,7 +1770,7 @@ def schedule_list(request, elements=None):
             list.append(getattr(element, field.name))
         element.fields_values = list
 
-    paginator = Paginator(elements, 10)
+    paginator = Paginator(elements, 20)
     page = request.GET.get('page')
 
     if page is None:
@@ -2073,13 +2094,15 @@ def schedule_upload(request):
     """
     """
 
+    import datetime
+
     file = open("fixtures/horarios.txt", "r")
 
     i = 1
     for line in file:
         #print(line)
         #print(len(line))
-        print(i)
+        #print(i)
         i += 1
         if len(line) > 62:
             previous = ''
@@ -2107,30 +2130,37 @@ def schedule_upload(request):
             try:
                 place = cms_models.Lugar.objects.get(titulo=aux[1].strip())
                 print(place)
+
             except cms_models.Lugar.DoesNotExist:
                 place = None
-                print(aux[1])
                 print("not exist")
+
             except cms_models.Lugar.MultipleObjectsReturned:
                 tmp = cms_models.Lugar.objects.filter(titulo=aux[1].strip())
-                place = tmp[1]
-                print(aux[1])
+                place = tmp[0]
                 print("more than one")
 
-            if place != None:
-                try:
-                    promo = cms_models.Horario.objects.get_or_create(
-                        estado='Activo',
-                        titulo=aux[2],
-                        en_titulo=aux[3],
-                        subtitulo=aux[4],
-                        en_subtitulo=aux[5],
-                        informacion=aux[6],
-                        en_informacion=aux[7],
-                        prioridad=aux[8],
-                        lugar=place)
-                except cms_models.Horario.DoesNotExist:
-                    print("error")
+            try:
+                schedule = cms_models.Horario.objects.get_or_create(
+                    estado='Activo',
+                    titulo=aux[2],
+                    en_titulo=aux[3],
+                    subtitulo=aux[4],
+                    en_subtitulo=aux[5],
+                    informacion=aux[6],
+                    en_informacion=aux[7],
+                    prioridad=aux[8],
+                    lugar=place
+                )
+
+                schdule_period = cms_models.PeriodoHorario.objects.get_or_create(
+                    horario=schedule[0],
+                    inicio=datetime.datetime.now().time(),
+                    fin=datetime.datetime.now().time()
+                )
+
+            except cms_models.Horario.DoesNotExist:
+                print("error")
 
     file.close()
 
@@ -2471,12 +2501,18 @@ def publication_upload(request):
             #print(len(aux))
 
             try:
-                category = cms_models.Categoria.objects.filter(
-                    titulo=aux[0]
-                )[:1]
-                #print(category)
+                category = cms_models.Categoria.objects.get(
+                    titulo=aux[0])
+                print(category)
+
             except cms_models.Categoria.DoesNotExist:
                 category = None
+                print("not exit")
+
+            except cms_models.Categoria.MultipleObjectsReturned:
+                tmp = cms_models.Categoria.objects.filter(titulo=aux[0].strip())
+                category = tmp[0]
+                print("more than one")
 
             try:
                 publication = cms_models.Publicacion.objects.get_or_create(
@@ -2486,7 +2522,7 @@ def publication_upload(request):
                     en_titulo=aux[3],
                     informacion=aux[4],
                     en_informacion=aux[5],
-                    categoria=category[0]
+                    categoria=category
                 )
             except cms_models.Categoria.DoesNotExist:
                 print("error")
@@ -3033,14 +3069,11 @@ def image_upload(request):
 
     host = 'http://salamantica.com/cms/files/'
     path = settings.MEDIA_ROOT
-    #path = '/Users/albertosanmartinmartinez/Desktop/empresas/1_Preconcebido/Clientes/Salamantica/venv_web/salamantica/media/photos/'
-
-    print(path)
 
     # Categorias
     file = open("fixtures/images_categorias.txt","r")
     folder = 'category/'
-    """
+
     for line in file:
 
         aux = line.split(',')
@@ -3049,57 +3082,64 @@ def image_upload(request):
         file_name_extension = url.split('/')[-1]
         file_name = file_name_extension.split(".")[2]
 
-        urllib.request.urlretrieve(host + folder + file_name_extension, path + file_name + ".jpg")
+        urllib.request.urlretrieve(host + folder + file_name_extension, path + '/photos/' + file_name + ".jpg")
 
         try:
             category = cms_models.Categoria.objects.get(titulo=category)
             print(category)
+
         except cms_models.Categoria.DoesNotExist:
             category = None
-        except cms_models.Categoria.MultipleObjectsReturned:
-            category = None
+            print("not exist")
 
-        if category != None:
-            try:
-                image = cms_models.Imagen.objects.get_or_create(
-                    titulo = file_name,
-                    imagen = 'photos/' + file_name + '.jpg',
-                    content_type_id = 7, #12 publicacion #9 lugar
-                    object_id = category.id
-                )
-            except cms_models.Imagen.DoesNotExist:
-                print("error")
-    """
+        except cms_models.Categoria.MultipleObjectsReturned:
+            tmp = cms_models.Categoria.objects.filter(titulo=category.strip())
+            category = tmp[0]
+            print("more than one")
+
+        try:
+            image = cms_models.Imagen.objects.get_or_create(
+                titulo = file_name,
+                imagen = 'photos/' + file_name + '.jpg',
+                content_type_id = 7,
+                object_id = category.id
+            )
+        except cms_models.Imagen.DoesNotExist:
+            print("error")
+
     file.close()
 
     # Lugares
     file = open("fixtures/images_lugares.txt","r")
     folder = 'place/'
-    """
+
     for line in file:
 
         aux = line.split(',')
-        print(aux[0])
         place = aux[0].strip("[").strip("'")
         url = aux[1].strip(" ").strip("[").strip("]").strip("'")
         file_name_extension = url.split('/')[-1]
         file_name = file_name_extension.split(".")[2]
 
-        #print(host + folder + file_name_extension)
-        #print(path + file_name + ".jpg")
-
         try:
-            urllib.request.urlretrieve(host + folder + file_name_extension, path + file_name + ".jpg")
+            urllib.request.urlretrieve(host + folder + 'lg/' + file_name_extension, path + '/photos/' + file_name + ".jpg")
         except:
             print("not file found")
 
         try:
             place = cms_models.Lugar.objects.get(titulo=place)
-            print(place)
+            #print(place)
+
         except cms_models.Lugar.DoesNotExist:
             place = None
+            #file_name = 'default'
+            #place.id = 1
+            print("not exist")
+
         except cms_models.Lugar.MultipleObjectsReturned:
-            place = None
+            tmp = cms_models.Lugar.objects.filter(titulo=place.strip())
+            place = tmp[0]
+            #print("more than one")
 
         if place != None:
             try:
@@ -3111,25 +3151,27 @@ def image_upload(request):
                 )
             except cms_models.Imagen.DoesNotExist:
                 print("error")
-    """
+
     file.close()
 
     # Publicaciones
     file = open("fixtures/images_publicaciones.txt","r")
     folder = 'posts/'
-    """
+    print(folder)
+
     for line in file:
 
         aux = line.split(',')
-        print(aux[0])
-        #print(aux[1])
         publication = aux[0].strip("[").strip("'")
         url = aux[1].strip(" ").strip("[").strip("]").strip("'")
         file_name_extension = url.split('/')[-1]
         file_name = file_name_extension.split(".")[2]
 
+        #print(host + folder + file_name_extension)
+        #print(path + file_name + ".jpg")
+
         try:
-            urllib.request.urlretrieve(host + folder + file_name_extension, path + file_name + ".jpg")
+            urllib.request.urlretrieve(host + folder + file_name_extension, path + '/photos/' + file_name + ".jpg")
         except:
             print("not file found")
 
@@ -3151,7 +3193,7 @@ def image_upload(request):
                 )
             except cms_models.Imagen.DoesNotExist:
                 print("error")
-    """
+
     file.close()
 
     return redirect('cms:image_list')
@@ -3199,7 +3241,7 @@ def video_list(request, elements=None):
             list.append(getattr(element, field.name))
         element.fields_values = list
 
-    paginator = Paginator(elements, 10)
+    paginator = Paginator(elements, 20)
     page = request.GET.get('page')
 
     try:

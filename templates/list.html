@@ -16,10 +16,10 @@
         <div class="card-header">
           <div class="container-fluid">
             <div class="row">
-              <div class="col-8">
+              <div class="col-6">
                 <h5>{{ title }}</h5><!--<p class="paginator">{{ elements|length }}</p>-->
               </div>
-              <div class="col-4">
+              <div class="col-6">
                 {% get_url urls 'create' as element_create %}
                 <button type="button" onclick="return openCustomModal('{% url element_create %}')" class="btn btn-outline-primary float-right">
                   <span class="fas fa-plus"></span>

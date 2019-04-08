@@ -57,7 +57,7 @@
                 {{ user.username }}
               </button>
             </a>
-            <a class="dropdown-item" href="#">Cambiar Contraseña</a>
+            <a class="dropdown-item" href="{% url 'cms:password_reset' %}">Cambiar Contraseña</a>
             <div class="dropdown-divider"></div>
             <a class="dropdown-item" href="{% url 'cms:logout'%}">Cerrar Sesión</a>
           {% endif %}
