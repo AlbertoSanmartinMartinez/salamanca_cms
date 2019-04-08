@@ -993,7 +993,6 @@ def place_upload(request):
             try:
                 category = cms_models.Categoria.objects.get(
                     titulo=aux[1]
-                    #Q(categoria_padre__titulo=aux[0])
                 )
                 print(category)
 
