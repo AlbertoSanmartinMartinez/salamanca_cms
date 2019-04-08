@@ -10,7 +10,13 @@ https://docs.djangoproject.com/en/2.1/howto/deployment/wsgi/
 import os
 
 from django.core.wsgi import get_wsgi_application
+from dj_static import Cling
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'salamantica.settings')
 
-application = get_wsgi_application()
+# DEVELOPMENT
+#application = get_wsgi_application()
+
+# PRODUCTION
+
+application = Cling(get_wsgi_application())
