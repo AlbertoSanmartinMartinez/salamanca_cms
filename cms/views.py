@@ -2596,7 +2596,7 @@ def user_create(request):
             current_site = get_current_site(request)
             mail_subject = 'Restablecer contraseña - Salamanca CMS'
             from_email = settings.EMAIL_HOST_USER
-            to_email = [from_email, user.email]
+            to_email = [user.email,]
             message = render_to_string('email_password_reset.txt', {
                 'user': user,
                 #'domain': current_site.domain,
@@ -3367,16 +3367,6 @@ def getVideoUrls():
     }
 
     return urls
-
-
-# Other General functions
-def custom_send_email():
-    """
-    """
-
-    from django.core.mail import send_mail
-
-
 
 
 # API Views
