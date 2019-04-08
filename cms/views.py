@@ -130,11 +130,11 @@ def password_reset(request):
                     current_site = get_current_site(request)
                     subject = 'Restablecer contraseña - Salamanca CMS'
                     from_email = settings.EMAIL_HOST_USER
-                    to_email = [from_email, user.email]
+                    to_email = [user.email,]
                     message = render_to_string('email_password_reset.txt', {
                         'user': user,
-                        #'domain': current_site.domain,
-                        'domain': '127.0.0.1:8000',
+                        'domain': current_site.domain,
+                        #'domain': '127.0.0.1:8000',
                         'uid': urlsafe_base64_encode(force_bytes(user.pk)).decode(),
                         'token': account_activation_token.make_token(user),
                     })
@@ -198,11 +198,11 @@ def password_reset_form(request, uidb64=None, token=None):
                 current_site = get_current_site(request)
                 subject = 'Confirmación - Salamanca CMS'
                 from_email = settings.EMAIL_HOST_USER
-                to_email = [from_email, user.email]
+                to_email = [user.email,]
                 message = render_to_string('email_activation.txt', {
                     'user': user,
-                    #'domain': current_site.domain,
-                    'domain': '127.0.0.1:8000',
+                    'domain': current_site.domain,
+                    #'domain': '127.0.0.1:8000',
                     'uid': urlsafe_base64_encode(force_bytes(user.pk)).decode(),
                     'token': account_activation_token.make_token(user),
                 })
@@ -2599,8 +2599,8 @@ def user_create(request):
             to_email = [user.email,]
             message = render_to_string('email_password_reset.txt', {
                 'user': user,
-                #'domain': current_site.domain,
-                'domain': '127.0.0.1:8000',
+                'domain': current_site.domain,
+                #'domain': '127.0.0.1:8000',
                 'uid': urlsafe_base64_encode(force_bytes(user.pk)).decode(),
                 'token': account_activation_token.make_token(user),
             })

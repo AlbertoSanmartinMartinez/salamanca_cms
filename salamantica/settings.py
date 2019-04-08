@@ -31,8 +31,8 @@ FIXTURE_DIRS = [
 # ********** MAIL SERVER CONFIG **********
 
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'mail.preconcebido.com'
-EMAIL_HOST_USER = ' info@preconcebido.com'
+EMAIL_HOST = 'mail.salamancamovil.com'
+EMAIL_HOST_USER = 'contacto@salamancamovil.com'
 EMAIL_HOST_PASSWORD = os.environ['MAIL_PASSWORD']
 #EMAIL_HOST_PASSWORD = 'Motoscoot.es7620'
 EMAIL_PORT = 587
