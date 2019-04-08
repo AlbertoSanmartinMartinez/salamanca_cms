@@ -989,25 +989,26 @@ def place_upload(request):
             [aux.append(item.strip("'")) for item in list]
             #print(aux)
             #print(len(aux))
-            print(aux[1])
 
             try:
                 category = cms_models.Categoria.objects.get(
                     titulo=aux[1]
                 )
-                print(category)
+                #print(category)
 
             except cms_models.Categoria.DoesNotExist:
                 category = None
+                print(aux[1])
                 print("not exit")
 
             except cms_models.Categoria.MultipleObjectsReturned:
-                tmp = cms_models.Categoria.objects.filter(titulo=aux[1].strip())
-                category = tmp[0]
+                category = cms_models.Categoria.objects.filter(titulo=aux[1].strip())[0]
+                print(category)
+                #category = tmp[0]
                 print("more than one")
 
             try:
-                cms_models.Lugar.objects.get_or_create(
+                place = cms_models.Lugar.objects.get_or_create(
                     estado='Activo',
                     titulo=aux[2],
                     en_titulo=aux[3],
