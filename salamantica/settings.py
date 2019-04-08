@@ -10,11 +10,13 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/2.1/howto/deployment/checklist/
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'k)y_y#@h_7mam=^^5r#09(ztwf$6&vjrf(&8w=a#!)m&i4gcg*'
+from decouple import config
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+#SECRET_KEY = 'k)y_y#@h_7mam=^^5r#09(ztwf$6&vjrf(&8w=a#!)m&i4gcg*'
+SECRET_KEY = config('SECRET_KEY')
+
+#DEBUG = True
+DEBUG = config('DEBUG', default=False, cast=bool)
 
 ALLOWED_HOSTS = [
     '*',
@@ -28,9 +30,10 @@ FIXTURE_DIRS = [
 
 # ********** MAIL SERVER CONFIG **********
 
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_HOST_USER = 'albertosanmartinmartinez@gmail.com'
-EMAIL_HOST_PASSWORD = 'Motoscoot.es7620'
+EMAIL_HOST_PASSWORD = 'motoscoot.es7620'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 
@@ -102,6 +105,11 @@ WSGI_APPLICATION = 'salamantica.wsgi.application'
 
 # Database
 # https://docs.djangoproject.com/en/2.1/ref/settings/#databases
+
+#from dj_database_url import parse as dburl
+#default_dburl = 'sqlite:///' + os.path.join(BASE_DIR, 'db.sqlite3')
+#DATABASES = { 'default': config('DATABASE_URL', default=default_dburl, cast=dburl), }
+
 
 DATABASES = {
     'default': {

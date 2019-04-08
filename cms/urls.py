@@ -17,10 +17,11 @@ urlpatterns = [
 
     path('acceso/', cms_views.custom_login, name='custom_login'),
     path('desconectar/', auth_views.LogoutView.as_view(), name='logout'),
-    #path('registro/', cms_views.custom_signup, name='custom_signup'),
-    path('activacion/<uidb64>/<token>/', cms_views.activation, name='activation'),
 
-    # reset password
+    path('activacion/<uidb64>/<token>/', cms_views.activation, name='activation'),
+    path('password_reset/', cms_views.password_reset, name='password_reset'),
+    path('password_reset_form/<uidb64>/<token>/', cms_views.password_reset_form, name='password_reset_form'),
+
     # reset password form
 
     # Categorias Urls

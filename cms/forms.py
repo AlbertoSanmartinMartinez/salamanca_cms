@@ -20,23 +20,34 @@ class LoginForm(AuthenticationForm):
     password = forms.CharField(label='', widget=forms.PasswordInput(attrs={'placeholder': u'Contraseña'}))
 
 
-class SingupForm(UserCreationForm):
+class SingupForm(forms.Form):
     """
     """
     username = forms.CharField(label="", widget=forms.TextInput(attrs={'placeholder':'Nombre de usuario'}))
     email = forms.EmailField(label="", widget=forms.EmailInput(attrs={'placeholder': u'Correo electrónico'}))
     first_name = forms.CharField(label="", required=False, widget=forms.TextInput(attrs={'placeholder':'Nombre'}))
     last_name = forms.CharField(label="", required=False, widget=forms.TextInput(attrs={'placeholder':'Apellidos'}))
-    password1 = forms.CharField(label="", widget=forms.PasswordInput(attrs={'placeholder': u'Contraseña'}))
-    password2 = forms.CharField(label="", widget=forms.PasswordInput(attrs={'placeholder': u'Confirmar contraseña'}))
+    #password1 = forms.CharField(label="", widget=forms.PasswordInput(attrs={'placeholder': u'Contraseña'}))
+    #password2 = forms.CharField(label="", widget=forms.PasswordInput(attrs={'placeholder': u'Confirmar contraseña'}))
 
     class Meta:
         model = User
-        fields = ['username', 'email', 'password1', 'password2', 'first_name', 'last_name']
+        fields = ['username', 'email', 'first_name', 'last_name']
 
 
-# reset password
-# active account
+class ResetForm(forms.Form):
+    """
+    """
+    username = forms.CharField(label="", widget=forms.TextInput(attrs={'placeholder':'Nombre de usuario o correo electrónico'}))
+
+
+class ResetPasswordForm(forms.Form):
+    """
+    """
+
+    username = forms.CharField(label="", widget=forms.HiddenInput)
+    password1 = forms.CharField(label="", widget=forms.PasswordInput(attrs={'placeholder': u'Contraseña'}))
+    password2 = forms.CharField(label="", widget=forms.PasswordInput(attrs={'placeholder': u'Confirmar contraseña'}))
 
 
 # CMS Forms

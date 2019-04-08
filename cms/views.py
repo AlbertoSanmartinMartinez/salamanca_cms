@@ -12,7 +12,7 @@ from django import forms
 
 from django.shortcuts import render, get_object_or_404, redirect
 from django.core import serializers
-from django.core.mail import EmailMessage
+from django.core.mail import EmailMessage, send_mail
 from django.core.paginator import Paginator, PageNotAnInteger
 from django.contrib.sites.shortcuts import get_current_site
 from django.contrib.auth import authenticate, login, logout
@@ -31,6 +31,7 @@ from rest_framework import permissions
 from rest_framework import status
 from rest_framework.response import Response
 
+from salamantica import settings
 from cms import models as cms_models
 from cms import forms as cms_forms
 from cms import serializers as cms_serializers
@@ -80,33 +81,19 @@ def activation(request, uidb64, token):
 
     print("activation function")
 
-    print(uidb64)
-    print(type(uidb64))
-
-    uid = force_text(urlsafe_base64_decode(uidb64))
-
-    print(uid)
-
-    user = User.objects.get(pk=uid)
-    print(user)
-
-    """
     try:
         uid = force_text(urlsafe_base64_decode(uidb64))
-        print(uid)
         user = User.objects.get(pk=uid)
         print(user)
 
     except(TypeError, ValueError, OverflowError, User.DoesNotExist):
         print("exception")
         user = None
-    """
 
     if user is not None and account_activation_token.check_token(user, token):
         print("user is not None")
         user.is_active = True
         user.save()
-        #custom_login(request, user)
 
         return redirect('cms:custom_login')
 
@@ -114,6 +101,123 @@ def activation(request, uidb64, token):
         print("user is None")
         print('Activation link is invalid!')
         return redirect('cms:home')
+
+
+def password_reset(request):
+    """
+    """
+
+    print("password reset function")
+
+    if request.method == 'POST':
+        print("post")
+
+        form = cms_forms.ResetForm(request.POST)
+        if form.is_valid():
+            print("valid form")
+            data = form.cleaned_data
+            print(data['username'])
+
+            user = User.objects.get(
+                Q(username=data['username']) |
+                Q(email=data['username']))
+
+            if user is not None:
+                print("user exist")
+                if user.is_active:
+                    print("user active")
+
+                    current_site = get_current_site(request)
+                    subject = 'Restablecer contraseña - Salamanca CMS'
+                    from_email = settings.EMAIL_HOST_USER
+                    to_email = [from_email, user.email]
+                    message = render_to_string('email_password_reset.txt', {
+                        'user': user,
+                        #'domain': current_site.domain,
+                        'domain': '127.0.0.1:8000',
+                        'uid': urlsafe_base64_encode(force_bytes(user.pk)).decode(),
+                        'token': account_activation_token.make_token(user),
+                    })
+                    send_mail(subject, message, from_email, to_email, fail_silently=False,)
+
+                else:
+                    print("user not active")
+            else:
+                print("user not exist")
+        else:
+            print(form.errors)
+
+        return redirect('cms:home')
+
+    else:
+        print("get")
+        form = cms_forms.ResetForm()
+
+    return render(request, 'password_reset.html', {
+        'form': form,
+    })
+
+
+def password_reset_form(request, uidb64=None, token=None):
+    """
+    """
+
+    print("passwrod reset form function")
+
+    user = None
+
+    try:
+        uid = force_text(urlsafe_base64_decode(uidb64))
+        user = User.objects.get(pk=uid)
+        print(user)
+
+    except(TypeError, ValueError, OverflowError, User.DoesNotExist):
+        print("user not existe")
+        user = None
+
+    if user is not None and account_activation_token.check_token(user, token):
+        if request.method == 'GET':
+            print("get")
+            form = cms_forms.ResetPasswordForm(initial={'username': user.username})
+
+    else:
+        if request.method == 'POST':
+            print("post")
+
+            form = cms_forms.ResetPasswordForm(request.POST)
+            if form.is_valid():
+                print("valid form")
+                data = form.cleaned_data
+                user = User.objects.get(username=data['username'])
+
+                if data['password1'] == data['password2']:
+                    print(data['password1'])
+                    user.set_password(data['password1'])
+                    user.save()
+
+                current_site = get_current_site(request)
+                subject = 'Confirmación - Salamanca CMS'
+                from_email = settings.EMAIL_HOST_USER
+                to_email = [from_email, user.email]
+                message = render_to_string('email_activation.txt', {
+                    'user': user,
+                    #'domain': current_site.domain,
+                    'domain': '127.0.0.1:8000',
+                    'uid': urlsafe_base64_encode(force_bytes(user.pk)).decode(),
+                    'token': account_activation_token.make_token(user),
+                })
+                send_mail(subject, message, from_email, to_email, fail_silently=False,)
+
+                return redirect('cms:home')
+
+            else:
+                print(form.errors)
+
+    print(user)
+
+    return render(request, 'password_reset_form.html', {
+        'form': form,
+    })
 
 
 # Category Views
@@ -2471,7 +2575,7 @@ def user_create(request):
     """
     """
 
-    print("category create function")
+    print("user create function")
 
     title = 'Nuevo Usuario'
     urls = getUserUrls()
@@ -2479,22 +2583,28 @@ def user_create(request):
     if request.method == 'POST':
         form = cms_forms.SingupForm(request.POST)
         if form.is_valid():
-            user = form.save(commit=False)
-            user.is_active = False
-            user.save()
+            data = form.cleaned_data
+
+            user = User.objects.create(
+                is_active=False,
+                username=data['username'],
+                email=data['email'],
+                first_name=data['first_name'],
+                last_name=data['last_name'],
+            )
 
             current_site = get_current_site(request)
-            mail_subject = 'Activa tu cuenta.'
-            message = render_to_string('activation_email.html', {
+            mail_subject = 'Restablecer contraseña - Salamanca CMS'
+            from_email = settings.EMAIL_HOST_USER
+            to_email = [from_email, user.email]
+            message = render_to_string('email_password_reset.txt', {
                 'user': user,
-                'domain': current_site.domain,
-                'uid': urlsafe_base64_encode(force_bytes(user.pk)),
+                #'domain': current_site.domain,
+                'domain': '127.0.0.1:8000',
+                'uid': urlsafe_base64_encode(force_bytes(user.pk)).decode(),
                 'token': account_activation_token.make_token(user),
             })
-            print(message)
-            to_email = form.cleaned_data.get('email')
-            email = EmailMessage(mail_subject, message, to_email)
-            email.send()
+            send_mail(mail_subject, message, from_email, to_email, fail_silently=False,)
 
             return redirect('cms:user_list')
         else:
