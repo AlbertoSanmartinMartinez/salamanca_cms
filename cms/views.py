@@ -989,6 +989,7 @@ def place_upload(request):
             [aux.append(item.strip("'")) for item in list]
             #print(aux)
             #print(len(aux))
+            print(aux[1])
 
             try:
                 category = cms_models.Categoria.objects.get(
@@ -1024,6 +1025,7 @@ def place_upload(request):
                     reserva=aux[16],
                     compra=aux[17],
                     vista360=aux[18])
+
             except cms_models.Lugar.DoesNotExist:
                 print("error")
 
