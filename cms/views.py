@@ -13,7 +13,7 @@ from django import forms
 from django.shortcuts import render, get_object_or_404, redirect
 from django.core import serializers
 from django.core.mail import EmailMessage, send_mail
-from django.core.paginator import Paginator, PageNotAnInteger
+from django.core.paginator import Paginator, PageNotAnInteger, EmptyPage
 from django.contrib.sites.shortcuts import get_current_site
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
@@ -22,6 +22,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.db.models import Q
 from django.core.files.base import ContentFile
 from django.http import JsonResponse
+from django.template import RequestContext
 from django.template.loader import render_to_string
 from django.utils.encoding import force_text, force_bytes
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
@@ -220,7 +221,7 @@ def password_reset_form(request, uidb64=None, token=None):
 
 # Category Views
 @login_required()
-def category_list(request, elements=None):
+def category_list(request, filter_dict=None):
     """
     list category view
     pagination function
@@ -233,24 +234,24 @@ def category_list(request, elements=None):
 
     title = 'Categorías'
 
-    if elements is None:
-        context_elements = request.GET.get('elements')
-        if context_elements is None:
-            elements = cms_models.Categoria.objects.all().order_by('-id')
-        else:
-            print(context_elements)
-            elements = context_elements
+    if filter_dict is None:
+        filter_dict = request.GET.copy()
 
-    #elements_list = elements
-    #print(elements_list)
+    if filter_dict is not None:
+        if filter_dict.get('order') is not None:
+            del filter_dict['order']
+        if filter_dict.get('page') is not None:
+            del filter_dict['page']
+
+        elements = category_filter_2(filter_dict)
+
+    else:
+        elements = cms_models.Categoria.objects.all().order_by('-id')
 
     order = request.GET.get('order')
-    print(order)
     if order is not None:
-        print("order is not none")
         elements = elements.order_by(order)
     else:
-        print("order is none")
         order = '-id'
 
     fields = []
@@ -269,10 +270,7 @@ def category_list(request, elements=None):
 
     page = request.GET.get('page')
     if page is None:
-        print("page is none")
         page = 1
-    else:
-        print("page is not none")
 
     try:
         elements = paginator.page(page)
@@ -284,12 +282,12 @@ def category_list(request, elements=None):
 
     return render(request, 'list.html', {
         'elements': elements,
-        #'elements_list': elements_list,
         'fields': fields,
         'urls': urls,
         'title': title,
         'order': order,
         'page': page,
+        'filter_dict': filter_dict
     })
 
 
@@ -361,9 +359,23 @@ def category_view(request, id=None):
     images = cms_models.Imagen.objects.filter(content_type_id=content_type.id, object_id=id)
     videos = cms_models.Video.objects.filter(content_type_id=content_type.id, object_id=id)
 
+    fields = []
+    model_fields = cms_models.Categoria._meta.get_fields()
+    exclude_fields = []
+    [fields.append(field) for field in model_fields if field.name not in exclude_fields]
+
     list = {}
     for field in element._meta.fields:
-        list[field.verbose_name] = getattr(element, field.name)
+        attribute_class_name = field.__class__.__name__
+        if attribute_class_name == 'ManyToManyField':
+            pass
+        elif attribute_class_name == 'ManyToOneRel':
+            pass
+        elif attribute_class_name == 'ForeignKey':
+            list['Subcategorías'] = element.parent_category.all()
+            list[field.verbose_name] = getattr(element, field.name)
+        else:
+            list[field.verbose_name] = getattr(element, field.name)
     element.fields_values = list
 
     return render(request, 'view.html', {
@@ -410,52 +422,37 @@ def category_filter(request):
     print("category filter function")
 
     title = 'Filtrar Categorías'
-    elements = cms_models.Categoria.objects.all()
     urls = getCategoryUrls()
 
     if request.method == 'POST':
         print("POST")
+        filter_dict = {}
         form = cms_forms.CategoryFilterForm(request.POST)
         if form.is_valid():
             data = form.cleaned_data
 
             if data['status'] is not None:
-                elements = elements.filter(
-                Q(estado=data['status']))
+                filter_dict['status'] = data['status']
 
             if data['text'] is not None:
-                elements = elements.filter(
-                Q(titulo__icontains=data["text"]) |
-                Q(en_titulo__icontains=data["text"]) |
-                Q(subtitulo__icontains=data["text"]) |
-                Q(en_subtitulo__icontains=data["text"]) |
-                Q(informacion__icontains=data["text"]) |
-                Q(en_informacion__icontains=data["text"]))
+                filter_dict['text'] = data['text']
 
             if data['start_date'] is not None:
-                elements = elements.filter(
-                Q(created_date__gte=data['start_date']))
+                filter_dict['start_date'] = data['start_date']
 
             if data['end_date'] is not None:
-                elements = elements.filter(
-                Q(created_date__lte=data['end_date']))
+                filter_dict['end_date'] = data['end_date']
 
             if data['start_priority'] is not None:
-                elements = elements.filter(
-                Q(prioridad__gte=data['start_priority']))
+                filter_dict['start_priority'] = data['start_priority']
 
             if data['end_priority'] is not None:
-                elements = elements.filter(
-                Q(prioridad__lte=data['end_priority']))
+                filter_dict['end_priority'] = data['end_priority']
 
             if data['categoria_padre'] is not None:
-                print(data['categoria_padre'])
-                categoria_padre = get_object_or_404(cms_models.Categoria, titulo=data['categoria_padre'])
-                print(categoria_padre.id)
-                elements = elements.filter(categoria_padre_id=categoria_padre.id)
-                #elements = elements.filter(categoria_padre=data['categoria_padre'])
+                filter_dict['categoria_padre'] = data['categoria_padre']
 
-            return category_list(request, elements)
+            return category_list(request, filter_dict)
 
         else:
             print("form invalid")
@@ -469,6 +466,50 @@ def category_filter(request):
         'urls': urls,
         'form': form,
     })
+
+
+def category_filter_2(filter_dict):
+    """
+    """
+
+    print("category filter 2 function")
+
+    elements = cms_models.Categoria.objects.all()
+
+    if filter_dict.get('status') is not None:
+        elements = elements.filter(
+        Q(estado=filter_dict['status']))
+
+    if filter_dict.get('text') is not None:
+        elements = elements.filter(
+        Q(titulo__icontains=filter_dict["text"]) |
+        Q(en_titulo__icontains=filter_dict["text"]) |
+        Q(subtitulo__icontains=filter_dict["text"]) |
+        Q(en_subtitulo__icontains=filter_dict["text"]) |
+        Q(informacion__icontains=filter_dict["text"]) |
+        Q(en_informacion__icontains=filter_dict["text"]))
+
+    if filter_dict.get('start_date') is not None:
+        elements = elements.filter(
+        Q(created_date__gte=filter_dict['start_date']))
+
+    if filter_dict.get('end_date') is not None:
+        elements = elements.filter(
+        Q(created_date__lte=filter_dict['end_date']))
+
+    if filter_dict.get('start_priority') is not None:
+        elements = elements.filter(
+        Q(prioridad__gte=filter_dict['start_priority']))
+
+    if filter_dict.get('end_priority') is not None:
+        elements = elements.filter(
+        Q(prioridad__lte=filter_dict['end_priority']))
+
+    if filter_dict.get('categoria_padre') is not None:
+        categoria_padre = get_object_or_404(cms_models.Categoria, titulo=filter_dict['categoria_padre'])
+        elements = elements.filter(categoria_padre_id=categoria_padre.id)
+
+    return elements
 
 
 @login_required()
@@ -645,7 +686,7 @@ def getCategoryUrls():
 
 #Place Views
 @login_required()
-def place_list(request, elements=None):
+def place_list(request, filter_dict=None):
     """
     """
 
@@ -653,7 +694,24 @@ def place_list(request, elements=None):
 
     title = 'Lugares'
 
-    if elements is None:
+    if filter_dict is None: #comprobamos si no pasamos algo de place_filter
+        print("filter dict is none")
+        filter_dict = request.GET.copy() #probamos a coger el diccionario de filtros del metodo get
+    else:
+        print("filter dict is not none")
+
+    if filter_dict is not None:
+        print("filter dict is not none")
+
+        if filter_dict.get('order') is not None:
+            del filter_dict['order']
+        if filter_dict.get('page') is not None:
+            del filter_dict['page']
+
+        print(filter_dict)
+        elements = place_filter_2(filter_dict)
+    else:
+        print("filter dict is none")
         elements = cms_models.Lugar.objects.all().order_by('-id')
 
     order = request.GET.get('order')
@@ -687,13 +745,16 @@ def place_list(request, elements=None):
     except EmptyPage:
         elements = paginator.page(paginator.num_pages)
 
+    print(filter_dict)
 
     return render(request, 'list.html', {
         'elements': elements,
         'fields': fields,
         'urls': urls,
         'title': title,
-        'order': order
+        'order': order,
+        'page': page,
+        'filter_dict': filter_dict
     })
 
 
@@ -806,6 +867,63 @@ def place_delete(request, id=None):
     })
 
 
+def place_filter_2(filter_dict):
+    """
+    """
+
+    print("place filter 2 function")
+
+    elements = cms_models.Lugar.objects.all().order_by('-id')
+
+    if filter_dict.get('status') is not None:
+        elements = elements.filter(
+        Q(estado=filter_dict['status']))
+
+    if filter_dict.get('text') is not None:
+        elements = elements.filter(
+        Q(titulo__icontains=filter_dict["text"]) |
+        Q(en_titulo__icontains=filter_dict["text"]) |
+        Q(subtitulo__icontains=filter_dict["text"]) |
+        Q(en_subtitulo__icontains=filter_dict["text"]) |
+        Q(informacion__icontains=filter_dict["text"]) |
+        Q(en_informacion__icontains=filter_dict["text"]) |
+        Q(servicios__icontains=filter_dict["text"]) |
+        Q(en_servicios__icontains=filter_dict["text"]))
+
+    if filter_dict.get('start_date') is not None:
+        elements = elements.filter(
+        Q(created_date__gte=filter_dict['start_date']))
+
+    if filter_dict.get('end_date') is not None:
+        elements = elements.filter(
+        Q(created_date__lte=filter_dict['end_date']))
+
+    if filter_dict.get('start_priority') is not None:
+        elements = elements.filter(
+        Q(prioridad__gte=filter_dict['start_priority']))
+
+    if filter_dict.get('end_priority') is not None:
+        elements = elements.filter(
+        Q(prioridad__lte=filter_dict['end_priority']))
+
+    if filter_dict.get('categoria') is not None:
+        elements = elements.filter(categoria_id=filter_dict['categoria'].id)
+
+    if filter_dict.get('start_rank') is not None:
+        elements = elements.filter(
+        Q(puntuacion__gte=filter_dict['start_rank']))
+
+    if filter_dict.get('end_rank') is not None:
+        elements = elements.filter(
+        Q(puntuacion__lte=filter_dict['end_rank']))
+
+    if filter_dict.get('destacado') is True:
+        elements = elements.filter(
+        Q(destacado=1))
+
+    return elements
+
+
 @login_required()
 def place_filter(request):
     """
@@ -814,62 +932,51 @@ def place_filter(request):
     print("place filter function")
 
     title = 'Filtrar Lugares'
-    elements = cms_models.Lugar.objects.all()
+    ##elements = cms_models.Lugar.objects.all()
     urls = getPlaceUrls()
 
     if request.method == 'POST':
-        print("GET")
+        print("POST")
+        filter_dict = {}
         form = cms_forms.PlaceFilterForm(request.POST)
         if form.is_valid():
             data = form.cleaned_data
 
+            if data['status'] is not None:
+                filter_dict['status'] = data['status']
+
             if data['text'] is not None:
-                elements = elements.filter(
-                Q(titulo__icontains=data["text"]) |
-                Q(en_titulo__icontains=data["text"]) |
-                Q(subtitulo__icontains=data["text"]) |
-                Q(en_subtitulo__icontains=data["text"]) |
-                Q(informacion__icontains=data["text"]) |
-                Q(en_informacion__icontains=data["text"]) |
-                Q(servicios__icontains=data["text"]) |
-                Q(en_servicios__icontains=data["text"]))
+                filter_dict['text'] = data['text']
 
             if data['start_date'] is not None:
-                elements = elements.filter(
-                Q(created_date__gte=data['start_date']))
+                filter_dict['start_date'] = data['start_date']
 
             if data['end_date'] is not None:
-                elements = elements.filter(
-                Q(created_date__lte=data['end_date']))
+                filter_dict['end_date'] = data['end_date']
 
             if data['start_priority'] is not None:
-                elements = elements.filter(
-                Q(prioridad__gte=data['start_priority']))
+                filter_dict['start_priority'] = data['start_priority']
 
             if data['end_priority'] is not None:
-                elements = elements.filter(
-                Q(prioridad__lte=data['end_priority']))
+                filter_dict['end_priority'] = data['end_priority']
 
             if data['categoria'] is not None:
-                elements = elements.filter(categoria_id=data['categoria'].id)
+                filter_dict['categoria'] = data['categoria']
 
             if data['start_rank'] is not None:
-                elements = elements.filter(
-                Q(puntuacion__gte=data['start_rank']))
+                filter_dict['start_rank'] = data['start_rank']
 
             if data['end_rank'] is not None:
-                elements = elements.filter(
-                Q(puntuacion__lte=data['end_rank']))
+                filter_dict['end_rank'] = data['end_rank']
 
             if data['destacado'] is True:
-                elements = elements.filter(
-                Q(destacado=1))
+                filter_dict['destacado'] = data['destacado']
 
-            return place_list('cms:place_list')
+            return place_list(request, filter_dict)
+
     else:
         print("GET")
         form = cms_forms.PlaceFilterForm()
-
 
     return render(request, 'filter.html', {
         'title': title,
@@ -1054,14 +1161,26 @@ def getPlaceUrls():
 
 # Promotion Views
 @login_required()
-def promo_list(request, elements=None):
+def promo_list(request, filter_dict=None):
     """
     """
 
     print("promo list function")
 
     title = 'Promociones'
-    if elements is None:
+
+    if filter_dict is None:
+        filter_dict = request.GET.copy()
+
+    if filter_dict is not None:
+        if filter_dict.get('order') is not None:
+            del filter_dict['order']
+        if filter_dict.get('page') is not None:
+            del filter_dict['page']
+
+        elements = promo_filter_2(filter_dict)
+
+    else:
         elements = cms_models.Promo.objects.all().order_by('-id')
 
     order = request.GET.get('order')
@@ -1103,6 +1222,7 @@ def promo_list(request, elements=None):
         'title': title,
         'order': order,
         'page': page,
+        'filter_dict': filter_dict
     })
 
 
@@ -1215,6 +1335,49 @@ def promo_delete(request, id=None):
     })
 
 
+def promo_filter_2(filter_dict):
+    """
+    """
+
+    print("promo filter 2 function")
+
+    elements = cms_models.Promo.objects.all()
+
+    if filter_dict.get('status') is not None:
+        elements = elements.filter(
+        Q(estado=filter_dict['status']))
+
+    if filter_dict.get('text') is not None:
+        elements = elements.filter(
+        Q(titulo__icontains=filter_dict["text"]) |
+        Q(en_titulo__icontains=filter_dict["text"]) |
+        Q(subtitulo__icontains=filter_dict["text"]) |
+        Q(en_subtitulo__icontains=filter_dict["text"]) |
+        Q(informacion__icontains=filter_dict["text"]) |
+        Q(en_informacion__icontains=filter_dict["text"]))
+
+    if filter_dict.get('start_date') is not None:
+        elements = elements.filter(
+        Q(created_date__gte=filter_dict['start_date']))
+
+    if filter_dict.get('end_date') is not None:
+        elements = elements.filter(
+        Q(created_date__lte=filter_dict['end_date']))
+
+    if filter_dict.get('start_priority') is not None:
+        elements = elements.filter(
+        Q(prioridad__gte=filter_dict['start_priority']))
+
+    if filter_dict.get('end_priority') is not None:
+        elements = elements.filter(
+        Q(prioridad__lte=filter_dict['end_priority']))
+
+    if filter_dict.get('place') is not None:
+        elements = elements.filter(lugar_id=filter_dict['place'].id)
+
+    return elements
+
+
 @login_required()
 def promo_filter(request):
     """
@@ -1223,51 +1386,38 @@ def promo_filter(request):
     print("promo filter function")
 
     title = 'Filtrar Promos'
-    elements = cms_models.Promo.objects.all()
     urls = getPromoUrls()
 
     if request.method == 'POST':
+        filter_dict = {}
         form = cms_forms.PromoFilterForm(request.POST)
         if form.is_valid():
             data = form.cleaned_data
 
             if data['status'] is not None:
-                elements = elements.filter(
-                Q(estado=data['status']))
+                filter_dict['status'] = data['status']
 
             if data['text'] is not None:
-                elements = elements.filter(
-                Q(titulo__icontains=data["text"]) |
-                Q(en_titulo__icontains=data["text"]) |
-                Q(subtitulo__icontains=data["text"]) |
-                Q(en_subtitulo__icontains=data["text"]) |
-                Q(informacion__icontains=data["text"]) |
-                Q(en_informacion__icontains=data["text"]))
+                filter_dict['text'] = data["text"]
 
             if data['start_date'] is not None:
-                elements = elements.filter(
-                Q(created_date__gte=data['start_date']))
+                filter_dict['start_date'] = data['start_date']
 
             if data['end_date'] is not None:
-                elements = elements.filter(
-                Q(created_date__lte=data['end_date']))
+                filter_dict['end_date'] = data['end_date']
 
             if data['start_priority'] is not None:
-                elements = elements.filter(
-                Q(prioridad__gte=data['start_priority']))
+                filter_dict['start_priority'] = data['start_priority']
 
             if data['end_priority'] is not None:
-                elements = elements.filter(
-                Q(prioridad__lte=data['end_priority']))
+                filter_dict['end_priority'] = data['end_priority']
 
             if data['place'] is not None:
-                print(data['place'])
-                elements = elements.filter(lugar_id=data['place'].id)
+                filter_dict['place'] = data['place'].titulo
 
-            return promo_list(request, elements)
+            return promo_list(request, filter_dict)
     else:
         form = cms_forms.PromoFilterForm()
-
 
     return render(request, 'filter.html', {
         'title': title,
@@ -1394,7 +1544,7 @@ def getPromoUrls():
 
 # Price Views
 @login_required()
-def price_list(request, elements=None):
+def price_list(request, filter_dict=None):
     """
     """
 
@@ -1402,7 +1552,18 @@ def price_list(request, elements=None):
 
     title = 'Precios'
 
-    if elements is None:
+    if filter_dict is None:
+        filter_dict = request.GET.copy()
+
+    if filter_dict is not None:
+        if filter_dict.get('order') is not None:
+            del filter_dict['order']
+        if filter_dict.get('page') is not None:
+            del filter_dict['page']
+
+        elements = price_filter_2(filter_dict)
+
+    else:
         elements = cms_models.Precio.objects.all().order_by('-id')
 
     order = request.GET.get('order')
@@ -1444,6 +1605,7 @@ def price_list(request, elements=None):
         'title': title,
         'order': order,
         'page': page,
+        'filter_dict': filter_dict
     })
 
 
@@ -1550,6 +1712,57 @@ def price_delete(request, id=None):
     })
 
 
+def price_filter_2(filter_dict):
+    """
+    """
+
+    print("price filter function")
+
+    elements = cms_models.Precio.objects.all()
+
+    if filter_dict.get('status') is not None:
+        elements = elements.filter(
+        Q(estado=filter_dict['status']))
+
+    if filter_dict.get('text') is not None:
+        elements = elements.filter(
+        Q(titulo__icontains=filter_dict["text"]) |
+        Q(en_titulo__icontains=filter_dict["text"]) |
+        Q(subtitulo__icontains=filter_dict["text"]) |
+        Q(en_subtitulo__icontains=filter_dict["text"]) |
+        Q(informacion__icontains=filter_dict["text"]) |
+        Q(en_informacion__icontains=filter_dict["text"]))
+
+    if filter_dict.get('start_date') is not None:
+        elements = elements.filter(
+        Q(created_date__gte=filter_dict['start_date']))
+
+    if filter_dict.get('end_date') is not None:
+        elements = elements.filter(
+        Q(created_date__lte=filter_dict['end_date']))
+
+    if filter_dict.get('start_priority') is not None:
+        elements = elements.filter(
+        Q(prioridad__gte=filter_dict['start_priority']))
+
+    if filter_dict.get('end_priority') is not None:
+        elements = elements.filter(
+        Q(prioridad__lte=filter_dict['end_priority']))
+
+    if filter_dict.get('place') is not None:
+        elements = elements.filter(lugar_id=filter_dict['place'].id)
+
+    if filter_dict.get('start_price') is not None:
+        elements = elements.filter(
+        Q(cantidad__gte=filter_dict['start_price']))
+
+    if filter_dict.get('end_price') is not None:
+        elements = elements.filter(
+        Q(cantidad__lte=filter_dict['end_price']))
+
+    return elements
+
+
 @login_required()
 def price_filter(request):
     """
@@ -1558,53 +1771,40 @@ def price_filter(request):
     print("price filter function")
 
     title = 'Filtrar Precios'
-    elements = cms_models.Precio.objects.all()
     urls = getPriceUrls()
 
     if request.method == 'POST':
+        filter_dict = {}
         form = cms_forms.PrecioFilterForm(request.POST)
         if form.is_valid():
             data = form.cleaned_data
 
             if data['status'] is not None:
-                elements = elements.filter(
-                Q(estado=data['status']))
+                filter_dict['status'] = data['status']
 
             if data['text'] is not None:
-                elements = elements.filter(
-                Q(titulo__icontains=data["text"]) |
-                Q(en_titulo__icontains=data["text"]) |
-                Q(subtitulo__icontains=data["text"]) |
-                Q(en_subtitulo__icontains=data["text"]) |
-                Q(informacion__icontains=data["text"]) |
-                Q(en_informacion__icontains=data["text"]))
+                filter_dict['text'] = data["text"]
 
             if data['start_date'] is not None:
-                elements = elements.filter(
-                Q(created_date__gte=data['start_date']))
+                filter_dict['start_date'] = data['start_date']
 
             if data['end_date'] is not None:
-                elements = elements.filter(
-                Q(created_date__lte=data['end_date']))
+                filter_dict['end_date'] = data['end_date']
 
             if data['start_priority'] is not None:
-                elements = elements.filter(
-                Q(prioridad__gte=data['start_priority']))
+                filter_dict['start_priority'] = data['start_priority']
 
             if data['end_priority'] is not None:
-                elements = elements.filter(
-                Q(prioridad__lte=data['end_priority']))
+                filter_dict['end_priority'] = data['end_priority']
 
             if data['place'] is not None:
-                elements = elements.filter(lugar_id=data['place'].id)
+                filter_dict['place'] = data['place']
 
             if data['start_price'] is not None:
-                elements = elements.filter(
-                Q(cantidad__gte=data['start_price']))
+                filter_dict['start_price'] = data['start_price']
 
             if data['end_price'] is not None:
-                elements = elements.filter(
-                Q(cantidad__lte=data['end_price']))
+                filter_dict['end_price'] = data['end_price']
 
             return price_list(request, elements)
     else:
@@ -1742,7 +1942,7 @@ def getPriceUrls():
 
 # Schedule Views
 @login_required()
-def schedule_list(request, elements=None):
+def schedule_list(request, filter_dict=None):
 
     """
     """
@@ -1751,7 +1951,18 @@ def schedule_list(request, elements=None):
 
     title = 'Horarios'
 
-    if elements is None:
+    if filter_dict is None:
+        filter_dict = request.GET.copy()
+
+    if filter_dict is not None:
+        if filter_dict.get('order') is not None:
+            del filter_dict['order']
+        if filter_dict.get('page') is not None:
+            del filter_dict['page']
+
+        elements = schedule_filter_2(filter_dict)
+
+    else:
         elements = cms_models.Horario.objects.all().order_by('-id')
 
     order = request.GET.get('order')
@@ -1793,6 +2004,7 @@ def schedule_list(request, elements=None):
         'title': title,
         'order': order,
         'page': page,
+        'filter_dict': filter_dict
     })
 
 
@@ -1993,6 +2205,45 @@ def schedule_delete(request, id=None):
     })
 
 
+def schedule_filter_2(filter_dict):
+    """
+    """
+
+    print("schedule filter function")
+
+    elements = cms_models.Horario.objects.all()
+
+    if filter_dict.get('text') is not None:
+        elements = elements.filter(
+        Q(titulo__icontains=filter_dict["text"]) |
+        Q(en_titulo__icontains=filter_dict["text"]) |
+        Q(subtitulo__icontains=filter_dict["text"]) |
+        Q(en_subtitulo__icontains=filter_dict["text"]) |
+        Q(informacion__icontains=filter_dict["text"]) |
+        Q(en_informacion__icontains=filter_dict["text"]))
+
+    if filter_dict.get('start_date') is not None:
+        elements = elements.filter(
+        Q(created_date__gte=filter_dict['start_date']))
+
+    if filter_dict.get('end_date') is not None:
+        elements = elements.filter(
+        Q(created_date__lte=filter_dict['end_date']))
+
+    if filter_dict.get('start_priority') is not None:
+        elements = elements.filter(
+        Q(prioridad__gte=filter_dict['start_priority']))
+
+    if filter_dict.get('end_priority') is not None:
+        elements = elements.filter(
+        Q(prioridad__lte=filter_dict['end_priority']))
+
+    if filter_dict.get('place') is not None:
+        elements = elements.filter(lugar_id=filter_dict['place'].id)
+
+    return elements
+
+
 @login_required()
 def schedule_filter(request):
     """
@@ -2001,46 +2252,35 @@ def schedule_filter(request):
     print("schedule filter function")
 
     title = 'Filtrar Horarios'
-    elements = cms_models.Horario.objects.all()
     urls = getScheduleUrls()
 
     if request.method == 'POST':
+        filter_dict = {}
         form = cms_forms.HorarioFilterForm(request.POST)
         if form.is_valid():
             data = form.cleaned_data
 
             if data['text'] is not None:
-                elements = elements.filter(
-                Q(titulo__icontains=data["text"]) |
-                Q(en_titulo__icontains=data["text"]) |
-                Q(subtitulo__icontains=data["text"]) |
-                Q(en_subtitulo__icontains=data["text"]) |
-                Q(informacion__icontains=data["text"]) |
-                Q(en_informacion__icontains=data["text"]))
+                filter_dict['status'] = data["text"]
 
             if data['start_date'] is not None:
-                elements = elements.filter(
-                Q(created_date__gte=data['start_date']))
+                filter_dict['status'] = data['start_date']
 
             if data['end_date'] is not None:
-                elements = elements.filter(
-                Q(created_date__lte=data['end_date']))
+                filter_dict['status'] = data['end_date']
 
             if data['start_priority'] is not None:
-                elements = elements.filter(
-                Q(prioridad__gte=data['start_priority']))
+                filter_dict['status'] = data['start_priority']
 
             if data['end_priority'] is not None:
-                elements = elements.filter(
-                Q(prioridad__lte=data['end_priority']))
+                filter_dict['status'] = data['end_priority']
 
             if data['place'] is not None:
-                elements = elements.filter(lugar_id=data['place'].id)
+                filter_dict['status'] = data['place'].titulo
 
-            return schedule_list(request, elements)
+            return schedule_list(request, filter_dict)
     else:
         form = cms_forms.HorarioFilterForm()
-
 
     return render(request, 'filter.html', {
         'title': title,
@@ -2187,7 +2427,7 @@ def getScheduleUrls():
 
 # Publication Views
 @login_required()
-def publication_list(request, elements=None):
+def publication_list(request, filter_dict=None):
 
     """
     """
@@ -2196,7 +2436,18 @@ def publication_list(request, elements=None):
 
     title = 'Publicaciones'
 
-    if elements is None:
+    if filter_dict is None:
+        filter_dict = request.GET.copy()
+
+    if filter_dict is not None:
+        if filter_dict.get('order') is not None:
+            del filter_dict['order']
+        if filter_dict.get('page') is not None:
+            del filter_dict['page']
+
+        elements = publication_filter_2(filter_dict)
+
+    else:
         elements = cms_models.Publicacion.objects.all().order_by('-id')
 
     order = request.GET.get('order')
@@ -2238,6 +2489,7 @@ def publication_list(request, elements=None):
         'title': title,
         'order': order,
         'page': page,
+        'filter_dict': filter_dict
     })
 
 
@@ -2350,6 +2602,55 @@ def publication_delete(request, id=None):
     })
 
 
+def publication_filter_2(filter_dict):
+    """
+    """
+
+    print("publication filter 2 function")
+
+    elements = cms_models.Publicacion.objects.all()
+
+    #print(filter_dict)
+
+    if filter_dict.get('status') is not None:
+        elements = elements.filter(
+        Q(estado=filter_dict['status']))
+
+    if filter_dict.get('text') is not None:
+        elements = elements.filter(
+        Q(titulo__icontains=filter_dict["text"]) |
+        Q(en_titulo__icontains=filter_dict["text"]) |
+        Q(subtitulo__icontains=filter_dict["text"]) |
+        Q(en_subtitulo__icontains=filter_dict["text"]) |
+        Q(informacion__icontains=filter_dict["text"]) |
+        Q(en_informacion__icontains=filter_dict["text"]))
+
+    if filter_dict.get('start_date') is not None:
+        elements = elements.filter(
+        Q(created_date__gte=filter_dict['start_date']))
+
+    if filter_dict.get('end_date') is not None:
+        elements = elements.filter(
+        Q(created_date__lte=filter_dict['end_date']))
+
+    if filter_dict.get('start_priority') is not None:
+        elements = elements.filter(
+        Q(prioridad__gte=filter_dict['start_priority']))
+
+    if filter_dict.get('end_priority') is not None:
+        elements = elements.filter(
+        Q(prioridad__lte=filter_dict['end_priority']))
+
+    if filter_dict.get('categoria') is not None:
+        elements = elements.filter(categoria_id=filter_dict['categoria'].titulo)
+
+    if filter_dict.get('type') is not None:
+        elements = elements.filter(
+        Q(tipo=filter_dict['type']))
+
+    return elements
+
+
 @login_required()
 def publication_filter(request):
     """
@@ -2358,51 +2659,39 @@ def publication_filter(request):
     print("publication filter function")
 
     title = 'Filtrar Publicaciones'
-    elements = cms_models.Publicacion.objects.all()
     urls = getPublicationUrls()
 
     if request.method == 'POST':
+        filter_dict = {}
         form = cms_forms.PublicacionFilterForm(request.POST)
         if form.is_valid():
             data = form.cleaned_data
 
             if data['status'] is not None:
-                elements = elements.filter(
-                Q(estado=data['status']))
+                filter_dict['status'] = data['status']
 
             if data['text'] is not None:
-                elements = elements.filter(
-                Q(titulo__icontains=data["text"]) |
-                Q(en_titulo__icontains=data["text"]) |
-                Q(subtitulo__icontains=data["text"]) |
-                Q(en_subtitulo__icontains=data["text"]) |
-                Q(informacion__icontains=data["text"]) |
-                Q(en_informacion__icontains=data["text"]))
+                filter_dict['text'] = data["text"]
 
             if data['start_date'] is not None:
-                elements = elements.filter(
-                Q(created_date__gte=data['start_date']))
+                filter_dict['start_date'] = data['start_date']
 
             if data['end_date'] is not None:
-                elements = elements.filter(
-                Q(created_date__lte=data['end_date']))
+                filter_dict['end_date'] = data['end_date']
 
             if data['start_priority'] is not None:
-                elements = elements.filter(
-                Q(prioridad__gte=data['start_priority']))
+                filter_dict['start_priority'] = data['start_priority']
 
             if data['end_priority'] is not None:
-                elements = elements.filter(
-                Q(prioridad__lte=data['end_priority']))
+                filter_dict['end_priority'] = data['end_priority']
 
             if data['categoria'] is not None:
-                elements = elements.filter(categoria_id=data['categoria'].id)
+                filter_dict['categoria'] = data['categoria'].titulo
 
             if data['type'] is not None:
-                elements = elements.filter(
-                Q(tipo=data['type']))
+                filter_dict['type'] = data['type']
 
-            return publication_list(request, elements)
+            return publication_list(request, filter_dict)
     else:
         form = cms_forms.PublicacionFilterForm()
 
@@ -2778,7 +3067,7 @@ def getUserUrls():
 
 # Image Views
 @login_required()
-def image_list(request, elements=None):
+def image_list(request, filter_dict=None):
     """
     """
 
@@ -2786,7 +3075,18 @@ def image_list(request, elements=None):
 
     title = 'Imagenes'
 
-    if elements is None:
+    if filter_dict is None:
+        filter_dict = request.GET.copy()
+
+    if filter_dict is not None:
+        if filter_dict.get('order') is not None:
+            del filter_dict['order']
+        if filter_dict.get('page') is not None:
+            del filter_dict['page']
+
+        elements = image_filter_2(filter_dict)
+
+    else:
         elements = cms_models.Imagen.objects.all().order_by('-id')
 
     order = request.GET.get('order')
@@ -2822,6 +3122,7 @@ def image_list(request, elements=None):
         'title': title,
         'order': order,
         'page': page,
+        'filter_dict': filter_dict
     })
 
 
@@ -2928,6 +3229,26 @@ def image_delete(request, id=None):
     })
 
 
+def image_filter_2(filter_dict):
+    """
+    """
+
+    print("image filter 2 function")
+
+    elements = cms_models.Imagen.objects.all()
+
+    if filter_dict.get('text') is not None:
+        elements = elements.filter(titulo=filter_dict['text'])
+
+    if filter_dict.get('content_type') is not None:
+        elements = elements.filter(content_type=filter_dict["content_type"])
+
+    if filter_dict.get('object_id') is not None:
+        elements = elements.filter(created_date__gte=filter_dict['object_id'])
+
+    return elements
+
+
 @login_required()
 def image_filter(request):
     """
@@ -2936,16 +3257,23 @@ def image_filter(request):
     print("image filter function")
 
     title = 'Filtrar Imagen'
-    elements = cms_models.Imagen.objects.all()
     urls = getImageUrls()
 
     if request.method == 'POST':
+        filter_dict = {}
         form = cms_forms.ImagenForm(request.POST)
         if form.is_valid():
-            print(form)
-            #form.save()
 
-            return redirect('cms:image_list')
+            if data['text'] is not None:
+                filter_dict['text'] = data['text']
+
+            if data['content_type'] is not None:
+                filter_dict['content_type'] = data['content_type']
+
+            if data['object_id'] is not None:
+                filter_dict['object_id'] = data['object_id']
+
+            return image_list(request, filter_dict)
     else:
         form = cms_forms.ImagenForm()
 
@@ -3219,13 +3547,24 @@ def getImageUrls():
 
 # Video Views
 @login_required()
-def video_list(request, elements=None):
+def video_list(request, filter_dict=None):
 
     print("video list function")
 
     title = 'Videos'
 
-    if elements is None:
+    if filter_dict is None:
+        filter_dict = request.GET.copy()
+
+    if filter_dict is not None:
+        if filter_dict.get('order') is not None:
+            del filter_dict['order']
+        if filter_dict.get('page') is not None:
+            del filter_dict['page']
+
+        elements = video_filter_2(filter_dict)
+
+    else:
         elements = cms_models.Video.objects.all().order_by('-id')
 
     order = request.GET.get('order')
@@ -3261,6 +3600,7 @@ def video_list(request, elements=None):
         'title': title,
         'order': order,
         'page': page,
+        'filter_dict': filter_dict
     })
 
 
@@ -3359,23 +3699,45 @@ def video_delete(request, id=None):
     })
 
 
+def video_filter_2(filter_dict):
+    """
+    """
+
+    print("video filter 2 function")
+
+    elements = cms_models.Video.objects.all()
+
+    if filter_dict.get('text') is not None:
+        elements = elements.filter(titulo=filter_dict['text'])
+
+    if filter_dict.get('content_type') is not None:
+        elements = elements.filter(content_type=filter_dict["content_type"])
+
+    if filter_dict.get('object_id') is not None:
+        elements = elements.filter(created_date__gte=filter_dict['object_id'])
+
+    return elements
+
+
 @login_required()
 def video_filter(request):
 
     print("video filter function")
 
     title = 'Filtrar Video'
-    elements = cms_models.Video.objects.all()
     urls = getVideoUrls()
 
     if request.method == 'POST':
+        filter_dict = {}
         form = cms_forms.VideoForm(request.POST)
         if form.is_valid():
-            print(form)
 
-            return redirect('cms:video_list')
+            if filter_dict.get('text') is not None:
+                elements = elements.filter(titulo=filter_dict['text'])
+
+            return video_list(request, filter_dict)
     else:
-        form = cms_forms.ImagenForm()
+        form = cms_forms.VideoForm()
 
 
     return render(request, 'filter.html', {
@@ -3408,6 +3770,45 @@ def getVideoUrls():
     }
 
     return urls
+
+
+# Handler Views
+def handler400(request, exception, template_name='400.html'):
+    """
+    """
+
+    response = render_to_response("400.html")
+    response.status_code = 400
+    return response
+
+
+def handler403(request, exception, template_name='403.html'):
+    """
+    """
+
+    response = render_to_response("403.html")
+    response.status_code = 403
+    return response
+
+
+def handler404(request, exception, template_name='404.html'):
+    """
+    """
+
+    response = render_to_response("404.html")
+    response.status_code = 404
+    return response
+
+
+def handler500(request, exception, template_name='500.html'):
+    """
+    """
+
+    response = render_to_response("500.html")
+    response.status_code = 500
+    return response
+
+
 
 
 # API Views

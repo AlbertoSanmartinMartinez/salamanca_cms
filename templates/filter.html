@@ -45,9 +45,10 @@
 
       </div>
       <div class="modal-footer">
-        <!--<a href="{% url 'cms:category_list'%}">
+        {% get_url urls 'list' as element_list %}
+        <a href="{% url element_list %}">
           <button type="button" class="btn btn-outline-danger">Borrar Filtros</button>
-        </a>-->
+        </a>
         <button type="submit" class="btn btn-outline-primary">Filtrar</button>
       </div>
     </form>

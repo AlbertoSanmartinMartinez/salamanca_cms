@@ -230,7 +230,7 @@ class ImagenForm(forms.ModelForm):
 
     class Meta:
         model = cms_models.Imagen
-        fields = '__all__'
+        exclude = ['imagen',]
 
     def __init__(self, *args, **kwargs):
         print("image form function")
@@ -245,7 +245,7 @@ class VideoForm(forms.ModelForm):
 
     class Meta:
         model = cms_models.Video
-        fields = '__all__'
+        exclude = ['video']
 
     def __init__(self, *args, **kwargs):
         print("video form function")

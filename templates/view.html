@@ -15,7 +15,7 @@
       <div class="modal-body">
 
         {% for key, value in element.fields_values.items %}
-          <p><b>{{ key }}:</b>  {{ value }}</p>
+          <p><b>{{ key }}:</b> {{ value }}</p>
         {% endfor %}
 
         {{ element.schedule_day.all }}

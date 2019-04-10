@@ -55,8 +55,8 @@
                           </button>
                           {% get_url urls 'list' as element_list %}
                           <ul class="dropdown-menu">
-                            <li><a href="{% url element_list %}?page={{page}}&order={{ field.name }}">asc</a></li>
-                            <li><a href="{% url element_list %}?page={{page}}&order=-{{ field.name }}">desc</a></li>
+                            <li><a href="{% url element_list %}?page={{page}}&order={{ field.name }}{% build_filter_url filter_dict %}">asc</a></li>
+                            <li><a href="{% url element_list %}?page={{page}}&order=-{{ field.name }}{% build_filter_url filter_dict %}">desc</a></li>
                           </ul>
                         </div>
 
@@ -112,51 +112,68 @@
         </div>
         <div class="card-footer">
 
-          {{elements_list}}
-
           <!-- Pagination -->
-          {% get_url urls 'list' as element_list %}
-          <ul class="pagination justify-content-center">
+          <!--{% get_url urls 'list' as element_list %}-->
+          <!--<ul class="pagination justify-content-center">
             {% if elements.has_previous %}
               <li class="page-item">
                 <a href="{% url element_list %}?page=1&order={{order}}">
-                  <button type="button" class="btn btn-outline-primary float-right">
+                  <button type="button" class="btn btn-outline-primary float-righ btn-sm">
                     <span class="fas fa-angle-double-left"></span>
                   </button>
                 </a>
               </li>
               <li class="page-item">
                 <a href="{% url element_list %}?page={{ elements.previous_page_number }}&order={{order}}">
-                  <button type="button" class="btn btn-outline-primary float-right">
+                  <button type="button" class="btn btn-outline-primary float-right btn-sm">
                     <span class="fas fa-angle-left"></span>
                   </button>
                 </a>
               </li>
             {% endif %}
-            <li class="page-item">
-              <a href="#">
-                <button type="button" class="btn btn-outline-primary float-right btn-sm">
-                  {{ elements.number }}
-                </button>
-              </a>
-            </li>
+
+              <li class="page-item">
+                <a href="{% url element_list %}?page={{ item }}&order={{order}}">
+                  <button type="button" class="btn btn-outline-primary float-right btn-sm">
+                    {{ elements.number }}
+                  </button>
+                </a>
+              </li>
+
             {% if elements.has_next %}
               <li class="page-item">
                 <a href="{% url element_list %}?page={{ elements.next_page_number }}&order={{order}}">
-                  <button type="button" class="btn btn-outline-primary float-right">
+                  <button type="button" class="btn btn-outline-primary float-right btn-sm">
                     <span class="fas fa-angle-right"></span>
                   </button>
                 </a>
               </li>
               <li class="page-item">
                 <a href="{% url element_list %}?page={{ elements.paginator.num_pages }}&order={{order}}">
-                  <button type="button" class="btn btn-outline-primary float-right">
+                  <button type="button" class="btn btn-outline-primary float-right btn-sm">
                     <span class="fas fa-angle-double-right"></span>
                   </button>
                 </a>
               </li>
             {% endif %}
-          </ul>
+          </ul>-->
+
+            <ul class="pagination justify-content-center">
+
+              {% for item in elements.paginator.page_range %}
+                {% if elements.number != item %}
+                  <li class="page-item">
+                    <!--<a class="page-link" href="{% url element_list %}?page={{ item }}&order={{order}}{% build_filter_url filter_dict %}">{{ item }}</a>-->
+                    <a class="page-link" href="{% url element_list %}?page={{ item }}&order={{order}}{% build_filter_url filter_dict %}">{{ item }}</a>
+                  </li>
+                {% else %}
+                  <li class="page-item active">
+                    <a class="page-link" href="{% url element_list %}?page={{ item }}&order={{order}}{% build_filter_url filter_dict %}">{{ item }} <span class="sr-only">(current)</span></a>
+                  </li>
+                {% endif %}
+              {% endfor %}
+            </ul>
+
         </div>
 
       </div>

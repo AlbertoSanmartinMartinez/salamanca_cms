@@ -16,6 +16,20 @@ def get_url(dictionary, key):
     return dictionary.get(key)
 
 
+@register.simple_tag
+def build_filter_url(dictionary):
+    """
+    """
+
+    url = ''
+    if dictionary != None:
+        for key, val in dictionary.items():
+            url += '&' + key + '=' + val
+        return url
+    else:
+        return ''
+
+
 
 
 #

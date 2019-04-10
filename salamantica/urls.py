@@ -25,6 +25,12 @@ urlpatterns = [
     # CMS Urls
     path('cms/', include((cms_urls, 'cms'), namespace='cms')),
 
+    # Error Handler Urls
+    #handler400 = 'cms_views.handler400'
+    #handler403 = 'cms_views.handler403'
+    #handler404 = 'cms_views.handler404'
+    #handler500 = 'cms_views.handler500'
+
 ]
 
 if settings.DEBUG:

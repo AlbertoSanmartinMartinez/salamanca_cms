@@ -26,7 +26,6 @@ urlpatterns = [
 
     # Categorias Urls
     path('categorias/', cms_views.category_list, name='category_list'),
-    #path('categorias/<int:id>/', cms_views.category_list, name='category_list'),
     path('categorias/crear', cms_views.category_create, name='category_create'),
     path('categorias/filtrar', cms_views.category_filter, name='category_filter'),
     path('categorias/scrap', cms_views.category_scrap, name='category_scrap'),

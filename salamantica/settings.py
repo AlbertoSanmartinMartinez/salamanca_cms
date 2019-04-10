@@ -58,6 +58,7 @@ INSTALLED_APPS = [
     'generic_relations',
     'embed_video',
     'ckeditor',
+    'django_filters',
 ]
 
 MIDDLEWARE = [
