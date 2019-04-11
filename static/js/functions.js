@@ -17,73 +17,68 @@ function closeCustomModal() {
 }
 
 /*
+Schedule Form & Period Schedule Formset JS
 */
 
 function walkTheDOM(node, func) {
-    func(node);
-    node = node.firstChild;
-    while (node) {
-        walkTheDOM(node, func);
-        node = node.nextSibling;
-    }
+  func(node);
+  node = node.firstChild;
+  while (node) {
+    walkTheDOM(node, func);
+    node = node.nextSibling;
+  }
 }
 
-function replaceCopy(node) {
-  function replaceNode(currentNode) {
+function updateFormSet(node) {
+  console.log("update period schedule form");
 
-    var num_forms = document.getElementsByClassName("period-schedule-form-class");
-    var total_forms = document.getElementById("id_form-TOTAL_FORMS");
-    total_forms.value = num_forms.length + 1;
+  function updateForm(currentNode) {
 
-    // ID's
-    if (currentNode.id == "period-schedule-form-0") {
-      currentNode.id = "period-schedule-form-" + num_forms.length;
-    }
-    if (currentNode.id == "id_form-0-inicio") {
-      currentNode.id = "id_form-" + num_forms.length + "-inicio";
-    }
-    if (currentNode.id == "id_form-0-fin") {
-      currentNode.id = "id_form-" + num_forms.length + "-fin";
-    }
+    var current_node_id = String(currentNode.id)
 
-    // Names's
-    if (currentNode.name == "form-0-inicio") {
-      currentNode.name = "form-" + num_forms.length + "-inicio";
-    }
-    if (currentNode.name == "form-0-fin") {
-      currentNode.name = "form-" + num_forms.length + "-fin";
-    }
+    var index_forms = Number(document.getElementById("index-forms").value);
 
-    // Checked
-    /*
-    currentNode.find(':input').each(function() {
-      var id = 'id_' + name;
-      $(this).removeAttr('checked');
-    });
-    */
+    if (current_node_id.startsWith('period-schedule-form-')) {
+      console.log(index_forms)
+      currentNode.id = 'period-schedule-form-' + index_forms;
+      document.getElementById("index-forms").value = index_forms + 1;
+    }
+    if (current_node_id.startsWith('-dia', 9)) {
+      currentNode.id = 'id_form-' + String(index_forms - 1) + '-dia';
+      currentNode.name = "form-" + String(index_forms - 1) + "-dia";
+    }
+    if (current_node_id.startsWith('-inicio', 9)) {
+      currentNode.id = 'id_form-' + String(index_forms - 1) + '-inicio';
+      currentNode.name = "form-" + String(index_forms - 1) + "-inicio";
+    }
+    if (current_node_id.startsWith('-fin', 9)) {
+      currentNode.id = 'id_form-' + String(index_forms - 1) + '-fin';
+      currentNode.name = "form-" + String(index_forms - 1) + "-fin";
+    }
   }
 
-  walkTheDOM(node, replaceNode);
-
-  return node;
+  walkTheDOM(node, updateForm);
 }
 
 $(document).on('click', '.delete-form', function() {
   console.log("delete period schedule form")
 
-  var form_id = ($(this).attr("data-target"))
-  var form = document.getElementById("period-schedule-form-" + form_id);
-  var formset = document.getElementById("period-schedule-formset");
+  if (Number(document.getElementById("id_form-TOTAL_FORMS").value) > 1) {
 
-  formset.removeChild(form);
+    var form_id = ($(this).attr("data-target"))
+    var form = document.getElementById("period-schedule-form-" + form_id);
+    var formset = document.getElementById("period-schedule-formset");
 
-  var total_forms = document.getElementById("id_form-TOTAL_FORMS");
-  total_forms.value = total_forms.value - 1;
+    formset.removeChild(form);
+    updateFormSet(formset);
 
+    document.getElementById("id_form-TOTAL_FORMS").value = Number(document.getElementById("index-forms").value);
+    document.getElementById("index-forms").value = 0;
+  }
 });
 
 $(document).on('click', '.add-form', function(e) {
-  console.log("clone period schedule form")
+  console.log("add period schedule form")
 
   e.preventDefault();
 
@@ -91,5 +86,9 @@ $(document).on('click', '.add-form', function(e) {
   var formset = document.getElementById("period-schedule-formset");
   var copy = form.cloneNode(true);
 
-  formset.appendChild(replaceCopy(copy));
+  formset.appendChild(copy);
+  updateFormSet(formset);
+
+  document.getElementById("id_form-TOTAL_FORMS").value = Number(document.getElementById("index-forms").value);
+  document.getElementById("index-forms").value = 0;
 });

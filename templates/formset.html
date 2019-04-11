@@ -1,6 +1,7 @@
 {% load widget_tweaks %}
 
 <div id="period-schedule-formset">
+<input type="hidden" name="index-forms" value="0" id="index-forms">
 {{ formset.management_form }}
 {% for form in formset %}
   {% for hidden in form.hidden_fields %}

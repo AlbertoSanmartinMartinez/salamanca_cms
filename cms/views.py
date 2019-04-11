@@ -1316,7 +1316,7 @@ def promo_delete(request, id=None):
 
     title = 'Borrar Promo'
     element = get_object_or_404(cms_models.Promo, id=id)
-    urls = getPlaceUrls()
+    urls = getPromoUrls()
 
     if request.method == 'POST':
         form = cms_forms.ConfirmationForm(request.POST)
@@ -1373,7 +1373,8 @@ def promo_filter_2(filter_dict):
         Q(prioridad__lte=filter_dict['end_priority']))
 
     if filter_dict.get('place') is not None:
-        elements = elements.filter(lugar_id=filter_dict['place'].id)
+        place = get_object_or_404(cms_models.Lugar, titulo=filter_dict['place'])
+        elements = elements.filter(lugar_id=place.id)
 
     return elements
 
@@ -1806,7 +1807,7 @@ def price_filter(request):
             if data['end_price'] is not None:
                 filter_dict['end_price'] = data['end_price']
 
-            return price_list(request, elements)
+            return price_list(request, filter_dict)
     else:
         form = cms_forms.PrecioFilterForm()
 
@@ -2011,6 +2012,8 @@ def schedule_list(request, filter_dict=None):
 @login_required()
 def schedule_create(request):
     """
+    generic formset with model and form
+    add and delete form formset in templates
     """
 
     from django import forms
@@ -2022,12 +2025,7 @@ def schedule_create(request):
 
     if request.method == 'POST':
         form = cms_forms.HorarioForm(request.POST)
-        formset = forms.modelformset_factory(
-            cms_models.PeriodoHorario,
-            extra=0,
-            form=cms_forms.PeriodoHorarioForm,
-        )
-        formset = formset(request.POST)
+        formset = cms_forms.PeriodoHorarioFormset(request.POST)
 
         if formset.is_valid() and form.is_valid():
             schedule = form.save()
@@ -2053,12 +2051,7 @@ def schedule_create(request):
 
     else:
         form = cms_forms.HorarioForm()
-        formset = forms.modelformset_factory(
-            cms_models.PeriodoHorario,
-            extra=1,
-            form=cms_forms.PeriodoHorarioForm,
-        )
-        formset = formset()
+        formset = cms_forms.PeriodoHorarioFormset(queryset=cms_models.Horario.objects.none())
 
     return render(request, 'create.html', {
         'title': title,
@@ -2079,18 +2072,12 @@ def schedule_update(request, id=None):
     element = get_object_or_404(cms_models.Horario, id=id)
     urls = getScheduleUrls()
     query = cms_models.PeriodoHorario.objects.filter(horario=element)
-    print(query)
+    #print(query)
 
     if request.method == 'POST':
         print("POST")
         form = cms_forms.HorarioForm(request.POST, instance=element)
-        formset = forms.modelformset_factory(
-            cms_models.PeriodoHorario,
-            extra=0,
-            form=cms_forms.PeriodoHorarioForm,
-        )
-        formset = formset(request.POST, queryset=query)
-        #print(formset)
+        formset = cms_forms.PeriodoHorarioFormset(request.POST, queryset=query)
 
         if formset.is_valid() and form.is_valid():
             schedule = form.save()
@@ -2119,13 +2106,7 @@ def schedule_update(request, id=None):
     else:
         print("GET")
         form = cms_forms.HorarioForm(instance=element)
-        formset = forms.modelformset_factory(
-            cms_models.PeriodoHorario,
-            extra=0,
-            form=cms_forms.PeriodoHorarioForm,
-        )
-        formset = formset(queryset=query)
-        #print(formset)
+        formset = cms_forms.PeriodoHorarioFormset(queryset=query) #, initial={'extra':0})
 
     return render(request, 'update.html', {
         'title': title,
@@ -2148,25 +2129,20 @@ def schedule_view(request, id=None):
 
     print(element._meta.get_fields())
 
-    """
-    list = {}
-    for field in element._meta.fields:
-        list[field.verbose_name] = getattr(element, field.name)
-    element.fields_values = list
-    """
-
     fields = []
     model_fields = cms_models.Horario._meta.get_fields()
-    exclude_fields = getExcludeFields(self.model._meta.verbose_name_plural, 'view')
+    exclude_fields = []
     [fields.append(field) for field in model_fields if field.name not in exclude_fields]
 
     list = {}
-    for field in fields:
-        if field.__class__.__name__ in ['ManyToManyField', 'ManyToOneRel']:
-            values = []
-            for value in getattr(element, field.name).all():
-                values.append(str(value))
-            list[field.verbose_name] = values
+    for field in element._meta.fields:
+        attribute_class_name = field.__class__.__name__
+        if attribute_class_name == 'ManyToManyField':
+            pass
+        elif attribute_class_name == 'ManyToOneRel':
+            pass
+        elif attribute_class_name == 'ForeignKey':
+            list['Horarios'] = element.schedule_day.all()
         else:
             list[field.verbose_name] = getattr(element, field.name)
     element.fields_values = list
@@ -2468,7 +2444,7 @@ def publication_list(request, filter_dict=None):
             list.append(getattr(element, field.name))
         element.fields_values = list
 
-    paginator = Paginator(elements, 10)
+    paginator = Paginator(elements, 20)
     page = request.GET.get('page')
 
     if page is None:
@@ -2642,7 +2618,8 @@ def publication_filter_2(filter_dict):
         Q(prioridad__lte=filter_dict['end_priority']))
 
     if filter_dict.get('categoria') is not None:
-        elements = elements.filter(categoria_id=filter_dict['categoria'].titulo)
+        categoria = get_object_or_404(cms_models.Categoria, titulo=filter_dict['categoria'])
+        elements = elements.filter(categoria_id=categoria.id)
 
     if filter_dict.get('type') is not None:
         elements = elements.filter(
@@ -2841,7 +2818,7 @@ def getPublicationUrls():
 
 
 @login_required()
-def user_list(request, elements=None):
+def user_list(request, filter_dict=None):
     """
     """
 
@@ -2849,8 +2826,19 @@ def user_list(request, elements=None):
 
     title = 'Usuarios'
 
-    if elements is None:
-        elements = User.objects.all().order_by('-id')
+    if filter_dict is None:
+        filter_dict = request.GET.copy()
+
+    if filter_dict is not None:
+        if filter_dict.get('order') is not None:
+            del filter_dict['order']
+        if filter_dict.get('page') is not None:
+            del filter_dict['page']
+
+        elements = user_filter_2(filter_dict)
+
+    else:
+        elements = cms_models.Categoria.objects.all().order_by('-id')
 
     order = request.GET.get('order')
     if order is not None:
@@ -2871,7 +2859,7 @@ def user_list(request, elements=None):
 
         element.fields_values = list
 
-    paginator = Paginator(elements, 10)
+    paginator = Paginator(elements, 20)
     page = request.GET.get('page')
 
     if page is None:
@@ -2892,6 +2880,7 @@ def user_list(request, elements=None):
         'title': title,
         'order': order,
         'page': page,
+        'filter_dict': filter_dict
     })
 
 
@@ -3025,6 +3014,17 @@ def user_delete(request, id=None):
     })
 
 
+def user_filter_2(filter_dict):
+    """
+    """
+
+    print("user filter 2 function")
+
+    elements = User.objects.all()
+
+    return elements
+
+
 @login_required()
 def user_filter(request):
     """
@@ -3034,6 +3034,15 @@ def user_filter(request):
 
     title = 'Filtrar Usuarios'
     urls = getUserUrls()
+
+    if request.method == 'POST':
+        filter_dict = {}
+        form = cms_forms.CategoryFilterForm(request.POST)
+        if form.is_valid():
+            return user_list(request, filter_dict)
+
+    else:
+        form = cms_forms.CategoryFilterForm()
 
     return render(request, 'filter.html', {
         'title': title,
@@ -3104,7 +3113,7 @@ def image_list(request, filter_dict=None):
             list.append(getattr(element, field.name))
         element.fields_values = list
 
-    paginator = Paginator(elements, 10)
+    paginator = Paginator(elements, 20)
     page = request.GET.get('page')
 
     try:
@@ -3244,7 +3253,7 @@ def image_filter_2(filter_dict):
         elements = elements.filter(content_type=filter_dict["content_type"])
 
     if filter_dict.get('object_id') is not None:
-        elements = elements.filter(created_date__gte=filter_dict['object_id'])
+        elements = elements.filter(object_id=filter_dict['object_id'])
 
     return elements
 
@@ -3261,21 +3270,22 @@ def image_filter(request):
 
     if request.method == 'POST':
         filter_dict = {}
-        form = cms_forms.ImagenForm(request.POST)
+        form = cms_forms.ImagenFilterForm(request.POST)
         if form.is_valid():
+            data = form.cleaned_data
 
-            if data['text'] is not None:
+            if data.get('text') is not None:
                 filter_dict['text'] = data['text']
 
-            if data['content_type'] is not None:
+            if data.get('content_type') is not None:
                 filter_dict['content_type'] = data['content_type']
 
-            if data['object_id'] is not None:
+            if data.get('object_id') is not None:
                 filter_dict['object_id'] = data['object_id']
 
             return image_list(request, filter_dict)
     else:
-        form = cms_forms.ImagenForm()
+        form = cms_forms.ImagenFilterForm()
 
 
     return render(request, 'filter.html', {
@@ -3729,7 +3739,7 @@ def video_filter(request):
 
     if request.method == 'POST':
         filter_dict = {}
-        form = cms_forms.VideoForm(request.POST)
+        form = cms_forms.VideoFilterForm(request.POST)
         if form.is_valid():
 
             if filter_dict.get('text') is not None:
@@ -3737,7 +3747,7 @@ def video_filter(request):
 
             return video_list(request, filter_dict)
     else:
-        form = cms_forms.VideoForm()
+        form = cms_forms.VideoFilterForm()
 
 
     return render(request, 'filter.html', {

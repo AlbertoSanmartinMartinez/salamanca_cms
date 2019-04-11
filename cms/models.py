@@ -236,8 +236,8 @@ class PeriodoHorario(models.Model):
 
     DAYS  = (("Lunes", "Lunes"), ("Martes", "Martes"), ("Miercoles", "Miercoles"), ("Jueves", "Jueves"), ("Viernes", "Viernes"), ("Sábado", "Sábado"), ("Domingo", "Domingo"))
     dia = models.CharField(_("Día"), max_length=9, choices=DAYS, default="Lunes", blank=True)
-    inicio = models.TimeField(verbose_name=_('Apertura'))
-    fin = models.TimeField(verbose_name=_('Cierre'))
+    inicio = models.TimeField(verbose_name=_('Apertura'), default='09:00')
+    fin = models.TimeField(verbose_name=_('Cierre'), default='20:00')
     horario = models.ForeignKey(Horario, verbose_name=_('Horario'), on_delete=models.CASCADE, related_name='schedule_day', blank=True)
 
     class Meta:

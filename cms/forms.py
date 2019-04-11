@@ -6,6 +6,7 @@ from django import forms
 from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
 from django.contrib.auth.models import User
 from django.contrib.contenttypes.models import ContentType
+from django.forms.models import modelformset_factory
 
 
 from cms import models as cms_models
@@ -164,8 +165,8 @@ class PrecioFilterForm(EntidadForm):
     """
     """
 
-    start_price = forms.DecimalField(label='Precio Mínimo', required=False, widget=forms.TextInput(attrs={'placeholder': '10'}))
-    end_price = forms.DecimalField(label='Precio Máximo', required=False, widget=forms.TextInput(attrs={'placeholder': '10'}))
+    start_price = forms.DecimalField(label='Cantidad Mínimo', required=False, widget=forms.TextInput(attrs={'placeholder': '10'}))
+    end_price = forms.DecimalField(label='Cantidad Máximo', required=False, widget=forms.TextInput(attrs={'placeholder': '10'}))
 
     def __init__(self, *args, **kwargs):
         super(PrecioFilterForm, self).__init__(*args, **kwargs)
@@ -193,9 +194,6 @@ class HorarioFilterForm(EntidadForm):
     """
     """
 
-    start_schedule = forms.DateField(label='Hora Inicio', required=False, widget=forms.TextInput(attrs={'placeholder': '09:15', 'class': 'timepicker'}))
-    end_schedule = forms.DateField(label='Hora Fin', required=False, widget=forms.TextInput(attrs={'placeholder': '10:20', 'class': 'timepicker'}))
-
     def __init__(self, *args, **kwargs):
         super(HorarioFilterForm, self).__init__(*args, **kwargs)
         self.fields['place'] = forms.ModelChoiceField(
@@ -214,15 +212,25 @@ class PeriodoHorarioForm(forms.ModelForm):
         fields = '__all__'
 
 
-PeriodoHorarioFormset = forms.modelformset_factory(
+PeriodoHorarioFormset = modelformset_factory(
     cms_models.PeriodoHorario,
-    extra=0,
+    #extra=1,
     #can_delete=True,
     #can_order=True
     #fields=('dia', 'inicio', 'fin'),
-    form=PeriodoHorarioForm
+    #form=PeriodoHorarioForm
+    exclude=('horario',)
 )
 
+"""
+class PeriodoHorarioFormset(BasePeriodoHorarioFormset):
+
+    def __init__(self, *args, **kwargs):
+        super(PeriodoHorarioFormset, self).__init__(*args, **kwargs)
+        print(kwargs.get('extra', None))
+
+        self.fields['extra'] = extra
+"""
 
 class ImagenForm(forms.ModelForm):
     """
@@ -230,7 +238,7 @@ class ImagenForm(forms.ModelForm):
 
     class Meta:
         model = cms_models.Imagen
-        exclude = ['imagen',]
+        fields = '__all__'
 
     def __init__(self, *args, **kwargs):
         print("image form function")
@@ -241,11 +249,29 @@ class ImagenForm(forms.ModelForm):
             queryset=ContentType.objects.filter(app_label='cms', model__in=models_list))
 
 
+class ImagenFilterForm(forms.ModelForm):
+    """
+    """
+
+    text = forms.CharField(label='Texto', required=False, widget=forms.TextInput(attrs={'placeholder': 'Buscar'}))
+
+    class Meta:
+        model = cms_models.Imagen
+        fields = ['text', 'content_type', 'object_id']
+
+    def __init__(self, *args, **kwargs):
+        super(ImagenFilterForm, self).__init__(*args, **kwargs)
+        models_list = ['categoria', 'lugar', 'promo', 'publicacion']
+        self.fields['content_type'] = forms.ModelChoiceField(
+            label='Tipo',
+            queryset=ContentType.objects.filter(app_label='cms', model__in=models_list))
+
+
 class VideoForm(forms.ModelForm):
 
     class Meta:
         model = cms_models.Video
-        exclude = ['video']
+        fields = '__all__'
 
     def __init__(self, *args, **kwargs):
         print("video form function")
@@ -256,7 +282,24 @@ class VideoForm(forms.ModelForm):
             queryset=ContentType.objects.filter(app_label='cms', model__in=models_list))
 
 
-#class ImageFilterForm(forms.Model)
+class VideoFilterForm(forms.ModelForm):
+    """
+    """
+
+    text = forms.CharField(label='Texto', required=False, widget=forms.TextInput(attrs={'placeholder': 'Buscar'}))
+
+    class Meta:
+        model = cms_models.Video
+        fields = ['text', 'content_type', 'object_id']
+
+    def __init__(self, *args, **kwargs):
+        super(VideoFilterForm, self).__init__(*args, **kwargs)
+        models_list = ['categoria', 'lugar', 'promo', 'publicacion']
+        self.fields['content_type'] = forms.ModelChoiceField(
+            label='Tipo',
+            queryset=ContentType.objects.filter(app_label='cms', model__in=models_list))
+
+
 class UserForm(forms.ModelForm):
     """
     """

@@ -24,7 +24,7 @@ def build_filter_url(dictionary):
     url = ''
     if dictionary != None:
         for key, val in dictionary.items():
-            url += '&' + key + '=' + val
+            url += '&' + str(key) + '=' + str(val)
         return url
     else:
         return ''
