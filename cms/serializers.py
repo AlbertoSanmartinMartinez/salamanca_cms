@@ -8,6 +8,15 @@ from cms import models as cms_models
 
 
 # Serializers
+class VideoSerializer(serializers.ModelSerializer):
+    """
+    """
+
+    class Meta:
+        model = cms_models.Video
+        fields = '__all__'
+
+
 class ImageSerializer(serializers.ModelSerializer):
     """
     """
@@ -29,6 +38,15 @@ class ImageSerializer(serializers.ModelSerializer):
         return request.build_absolute_uri(photo_url)
 
 
+class SchedulePeriodSerializer(serializers.ModelSerializer):
+    """
+    """
+
+    class Meta:
+        model = cms_models.PeriodoHorario
+        fields = '__all__'
+
+
 class PriceSerializer(serializers.ModelSerializer):
     """
     """
@@ -41,6 +59,8 @@ class PriceSerializer(serializers.ModelSerializer):
 class ScheduleSerializer(serializers.ModelSerializer):
     """
     """
+
+    schedule_periods = SchedulePeriodSerializer(many=True)
 
     class Meta:
         model = cms_models.Horario
@@ -72,23 +92,12 @@ class PlaceSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
-class PublicationSerializer(serializers.ModelSerializer):
-    """
-    """
-
-    images = ImageSerializer(many=True, read_only=True)
-
-    class Meta:
-        model = cms_models.Publicacion
-        fields = '__all__'
-
-
 class CategorySerializer(serializers.ModelSerializer):
     """
     """
 
     place_category = PlaceSerializer(many=True)
-    publication_category = PublicationSerializer(many=True)
+    #publication_category = PublicationSerializer(many=True)
     images = ImageSerializer(many=True, read_only=True)
     parent_category = serializers.StringRelatedField(many=True)
 
@@ -97,6 +106,18 @@ class CategorySerializer(serializers.ModelSerializer):
         fields = '__all__'
         #exclude = ('categoria_padre',)
         #depth = 1
+
+
+class PublicationSerializer(serializers.ModelSerializer):
+    """
+    """
+
+    images = ImageSerializer(many=True, read_only=True)
+    categoria = CategorySerializer(read_only=True)
+
+    class Meta:
+        model = cms_models.Publicacion
+        fields = '__all__'
 
 
 

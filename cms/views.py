@@ -66,6 +66,8 @@ def custom_login(request):
                     login(request, user)
 
                     return redirect('cms:category_list')
+        else:
+            print(form.errors)
 
     else:
         form = cms_forms.LoginForm()
@@ -3844,8 +3846,6 @@ def rest_category_list(request):
     return Response(elements.data, status=status.HTTP_200_OK, template_name=None, headers=None, content_type=None)
 
 
-
-
 @api_view(http_method_names=['GET'])
 @permission_classes((permissions.AllowAny,))
 def rest_category_detail(request):
@@ -3909,12 +3909,28 @@ def rest_promo_list(request):
 
     print("promo list api function")
 
-    if id is None:
-        elements = cms_models.Promo.objects.filter(estado='Activo') #.order_by('id')
-    else:
-        elements = cms_models.Promo.objects.filter(categoria_id=id, estado='Activo')#.prefetch_related('places') #.order_by('id')
+    promo_id = request.GET.get('promo_id')
+    print(promo_id)
+    place_id = request.GET.get('place_id')
+    print(place_id)
 
-    elements = cms_serializers.PromoSerializer(elements, many=True)
+    if promo_id != None:
+        print("promo id not none")
+        element = get_object_or_404(cms_models.Promo, id=promo_id)
+        element = cms_serializers.PromoSerializer(element, context={"request": request})
+
+        return Response(element.data, status=status.HTTP_200_OK, template_name=None, headers=None, content_type=None)
+
+    else:
+        print("promo id none")
+        if place_id is 'null':
+            print("place id none")
+            elements = cms_models.Promo.objects.filter(estado='Activo').order_by('-created_date')
+        else:
+            print("place id not none")
+            elements = cms_models.Promo.objects.filter(lugar_id=place_id, estado='Activo').order_by('-created_date')
+
+    elements = cms_serializers.PromoSerializer(elements, context={"request": request}, many=True)
 
     return Response(elements.data, status=status.HTTP_200_OK, template_name=None, headers=None, content_type=None)
 
@@ -3928,14 +3944,14 @@ def rest_event_list(request):
     print("events api function")
 
     event_id = request.GET.get('event_id')
-    #category_id = request.GET.get('category_id')
+    print(event_id)
 
     if event_id is None:
         elements = cms_models.Publicacion.objects.filter(estado='Activo', tipo='Evento').order_by('-created_date')
-        elements = cms_serializers.PublicationSerializer(elements, many=True)
+        elements = cms_serializers.PublicationSerializer(elements, context={"request": request}, many=True)
     else:
         elements = get_object_or_404(cms_models.Publicacion, id=event_id)
-        elements = cms_serializers.PublicationSerializer(elements)
+        elements = cms_serializers.PublicationSerializer(elements, context={"request": request})
 
     return Response(elements.data, status=status.HTTP_200_OK, template_name=None, headers=None, content_type=None)
 
@@ -3956,7 +3972,6 @@ def rest_new_list(request):
         elements = cms_serializers.PublicationSerializer(elements, context={"request": request}, many=True)
     else:
         elements = get_object_or_404(cms_models.Publicacion, id=new_id)
-        #print(elements)
         elements = cms_serializers.PublicationSerializer(elements, context={"request": request})
 
     return Response(elements.data, status=status.HTTP_200_OK, template_name=None, headers=None, content_type=None)
