@@ -3873,28 +3873,23 @@ def rest_place_list(request):
 
     print("places list api function")
 
+    place_id = None
     place_id = request.GET.get('place_id')
+    category = None
     category_id = request.GET.get('category_id')
 
-    print(place_id)
-    print(type(place_id))
-
     if place_id != None:
+        print("place not none")
         element = get_object_or_404(cms_models.Lugar, id=place_id)
-
-        #print(element)
-
         element = cms_serializers.PlaceSerializer(element, context={"request": request})
 
         return Response(element.data, status=status.HTTP_200_OK, template_name=None, headers=None, content_type=None)
 
     else:
-        if category_id is 'null':
+        if category_id == 'undefined':
             elements = cms_models.Lugar.objects.filter(estado='Activo') #.order_by('id')
         else:
             elements = cms_models.Lugar.objects.filter(categoria_id=category_id, estado='Activo')#.prefetch_related('places') #.order_by('id')
-
-    #print(elements)
 
     elements = cms_serializers.PlaceSerializer(elements, context={"request": request}, many=True)
 

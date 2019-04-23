@@ -33,7 +33,6 @@ class ImageSerializer(serializers.ModelSerializer):
         """
         request = self.context.get('request')
         photo_url = obj.imagen.url
-        print(photo_url)
 
         return request.build_absolute_uri(photo_url)
 
