@@ -136,6 +136,7 @@ class Lugar(Entidad):
     url = models.URLField(_("Pagina Web"), null=True, blank=True)
     reserva = models.URLField(_("Reservar"), null=True, blank=True)
     compra = models.URLField(_("Comprar"), null=True, blank=True)
+    #mail
     vista360 = models.URLField(_("Vista 360"), null=True, blank=True)
 
     class Meta:

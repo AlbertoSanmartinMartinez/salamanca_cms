@@ -2144,7 +2144,7 @@ def schedule_view(request, id=None):
         elif attribute_class_name == 'ManyToOneRel':
             pass
         elif attribute_class_name == 'ForeignKey':
-            list['Horarios'] = element.schedule_day.all()
+            list['Horarios'] = element.schedule_day.all() # error filtrar por horario
         else:
             list[field.verbose_name] = getattr(element, field.name)
     element.fields_values = list
