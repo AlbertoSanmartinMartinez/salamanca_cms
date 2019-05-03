@@ -12,11 +12,11 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 from decouple import config
 
-#SECRET_KEY = 'k)y_y#@h_7mam=^^5r#09(ztwf$6&vjrf(&8w=a#!)m&i4gcg*'
 SECRET_KEY = config('SECRET_KEY')
 
-#DEBUG = True
 DEBUG = config('DEBUG', default=False, cast=bool)
+
+PRODUCTION = 'True'
 
 ALLOWED_HOSTS = [
     '*',
@@ -33,8 +33,8 @@ FIXTURE_DIRS = [
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'mail.salamancamovil.com'
 EMAIL_HOST_USER = 'contacto@salamancamovil.com'
-#EMAIL_HOST_PASSWORD = os.environ['MAIL_PASSWORD']
-EMAIL_HOST_PASSWORD = 'ConTacto21'
+EMAIL_HOST_PASSWORD = os.environ.get('MAIL_PASSWORD')
+#EMAIL_HOST_PASSWORD = 'ConTacto21'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
 
@@ -59,6 +59,7 @@ INSTALLED_APPS = [
     'embed_video',
     'ckeditor',
     'django_filters',
+    'storages'
 ]
 
 MIDDLEWARE = [
@@ -72,6 +73,7 @@ MIDDLEWARE = [
     #'django.contrib.auth.middleware.SessionAuthenticationMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     #'django.middleware.locale.LocaleMiddleware',
+    #'whitenoise.middleware.WhiteNoiseMiddlweare',
 ]
 
 ROOT_URLCONF = 'salamantica.urls'
@@ -154,34 +156,78 @@ USE_L10N = True
 USE_TZ = True
 
 
-# ********** STATIC FILES **********
+if PRODUCTION == 'False':
+    print("production false")
+    # ********** STATIC FILES **********
+    # DEVELOPMENT
 
-# DEVELOPMENT
+    STATIC_URL = '/static/'
 
-STATIC_URL = '/static/'
+    STATICFILES_DIRS = [
+        os.path.join(BASE_DIR, "static"),
+    ]
 
-STATICFILES_DIRS = [
-    os.path.join(BASE_DIR, "static"),
-]
-
-STATICFILES_FINDERS = [
+    STATICFILES_FINDERS = [
        "django.contrib.staticfiles.finders.FileSystemFinder",
        "django.contrib.staticfiles.finders.AppDirectoriesFinder"
-]
+    ]
 
-STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
+    STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
 
-# ********** MEDIA FILES **********
+    # ********** MEDIA FILES **********
+    # DEVELOPMENT
 
-# DEVELOPMENT
+    MEDIA_URL = '/media/'
 
-MEDIA_URL = '/media/'
+    MEDIAFILES_DIRS = [
+        os.path.join(BASE_DIR, "media"),
+    ]
 
-MEDIAFILES_DIRS = [
-    os.path.join(BASE_DIR, "media"),
-]
+    MEDIA_ROOT = os.path.join(BASE_DIR, "media")
 
-MEDIA_ROOT = os.path.join(BASE_DIR, "media")
+else:
+    # ********** Amazon S3 Storage *********
+
+    #https://django-storages.readthedocs.io/en/latest/backends/amazon-S3.html
+    #https://devcenter.heroku.com/articles/django-assets
+    #https://aws.amazon.com/es/s3/?nc2=h_m1
+
+    # ********** STATIC FILES **********
+    # Production
+
+    STATICFILES_DIRS = [
+        os.path.join(BASE_DIR, "static"),
+    ]
+
+    STATICFILES_FINDERS = [
+       "django.contrib.staticfiles.finders.FileSystemFinder",
+       "django.contrib.staticfiles.finders.AppDirectoriesFinder"
+    ]
+
+    AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID')
+    AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY')
+    AWS_STORAGE_BUCKET_NAME = 'buckectsalamancacms'
+    AWS_S3_OBJECT_PARAMETERS = {'CacheControl': 'max-age=86400'}
+    AWS_S3_CUSTOM_DOMAIN = '%s.s3.amazonaws.com' % AWS_STORAGE_BUCKET_NAME
+
+    AWS_DEFAULT_ACL = None
+    #ADMIN_MEDIA_PREFIX = STATIC_URL + 'admin/'
+
+    STATIC_LOCATION = 'static'
+    STATIC_URL='https://%s/%s/' % (AWS_S3_CUSTOM_DOMAIN, STATIC_LOCATION)
+    #DEFAULT_FILE_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
+    STATICFILES_STORAGE = 'cms.files.StaticStorage'
+
+    # ********** MEDIA FILES **********
+    # Production
+
+    MEDIAFILES_DIRS = [
+        os.path.join(BASE_DIR, "media"),
+    ]
+
+    MEDIA_LOCATION = 'media'
+    STATIC_URL='https://%s/%s/' % (AWS_S3_CUSTOM_DOMAIN, MEDIA_LOCATION)
+    MEDIAFILES_STORAGE = 'cms.files.MediaStorage'
 
 # ********** RESTFRAMEWORKS **********
 
