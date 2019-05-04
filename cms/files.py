@@ -7,11 +7,12 @@ from django.conf import settings
 
 
 class StaticStorage(S3Boto3Storage):
-    location = 'static'
+    location = settings.STATIC_LOCATION
     #default_acl = 'public-read'
+    #file_overwrite = False
 
 
 class MediaStorage(S3Boto3Storage):
-    location = 'media'
-    #default_acl = 'public-read'
+    location = settings.MEDIA_LOCATION
+    #default_acl = None
     file_overwrite = False
